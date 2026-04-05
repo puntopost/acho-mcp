@@ -1,0 +1,129 @@
+package term
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Box drawing characters
+const (
+	topLeft     = "╔"
+	topRight    = "╗"
+	bottomLeft  = "╚"
+	bottomRight = "╝"
+	horizontal  = "═"
+	vertical    = "║"
+	teeLeft     = "╠"
+	teeRight    = "╣"
+)
+
+// Box renders content inside a colored box frame.
+type Box struct {
+	width int
+	lines []string
+}
+
+func NewBox(width int) *Box {
+	return &Box{width: width}
+}
+
+func (b *Box) Blank() {
+	b.lines = append(b.lines, "")
+}
+
+func (b *Box) Title(text string) {
+	b.lines = append(b.lines, fmt.Sprintf("%s%s%s%s", T.Bold(), T.Secondary(), centerPad(text, b.width-6), T.Reset()))
+}
+
+func (b *Box) Separator() {
+	b.lines = append(b.lines, "---")
+}
+
+func (b *Box) Section(title string) {
+	b.lines = append(b.lines, fmt.Sprintf("%s%s%s%s", T.Bold(), T.Accent(), title, T.Reset()))
+}
+
+func (b *Box) Bar(label string, count, max, labelWidth int) {
+	inner := b.width - 6
+	barMax := inner - labelWidth - 9 // 2 indent + 2 gap + 2 gap + 3 count digits
+	if barMax < 1 {
+		barMax = 1
+	}
+	barLen := 0
+	if max > 0 {
+		barLen = (count * barMax) / max
+	}
+	if barLen < 1 && count > 0 {
+		barLen = 1
+	}
+
+	bar := strings.Repeat("█", barLen)
+	pad := strings.Repeat(" ", barMax-barLen)
+
+	b.lines = append(b.lines, fmt.Sprintf(
+		"  %s%-*s%s  %s%s%s%s  %s%s%3d%s",
+		T.Muted(), labelWidth, label, T.Reset(),
+		T.Primary(), bar, pad, T.Reset(),
+		T.Bold(), T.Secondary(), count, T.Reset(),
+	))
+}
+
+func (b *Box) String() string {
+	inner := b.width - 6 // ║ (1) + "  " (2) + content (inner) + "  " (2) + ║ (1) = width
+	var sb strings.Builder
+
+	// Top border
+	sb.WriteString(fmt.Sprintf("%s%s%s%s%s\n", T.Border(), topLeft, strings.Repeat(horizontal, b.width-2), topRight, T.Reset()))
+
+	for _, line := range b.lines {
+		if line == "---" {
+			// Separator line
+			sb.WriteString(fmt.Sprintf("%s%s%s%s%s\n", T.Border(), teeLeft, strings.Repeat(horizontal, b.width-2), teeRight, T.Reset()))
+		} else if line == "" {
+			// Blank line
+			sb.WriteString(fmt.Sprintf("%s%s%s  %*s  %s%s\n", T.Border(), vertical, T.Reset(), inner, "", T.Border(), vertical+T.Reset()))
+		} else {
+			// Content line - pad to inner width accounting for ANSI codes
+			visible := visibleLen(line)
+			padding := inner - visible
+			if padding < 0 {
+				padding = 0
+			}
+			sb.WriteString(fmt.Sprintf("%s%s%s  %s%*s  %s%s\n", T.Border(), vertical, T.Reset(), line, padding, "", T.Border(), vertical+T.Reset()))
+		}
+	}
+
+	// Bottom border
+	sb.WriteString(fmt.Sprintf("%s%s%s%s%s\n", T.Border(), bottomLeft, strings.Repeat(horizontal, b.width-2), bottomRight, T.Reset()))
+
+	return sb.String()
+}
+
+func centerPad(text string, width int) string {
+	if len(text) >= width {
+		return text
+	}
+	left := (width - len(text)) / 2
+	right := width - len(text) - left
+	return strings.Repeat(" ", left) + text + strings.Repeat(" ", right)
+}
+
+// visibleLen returns the length of a string excluding ANSI escape sequences.
+func visibleLen(s string) int {
+	n := 0
+	inEscape := false
+	for _, r := range s {
+		if r == '\033' {
+			inEscape = true
+			continue
+		}
+		if inEscape {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEscape = false
+			}
+			continue
+		}
+		n++
+	}
+	return n
+}

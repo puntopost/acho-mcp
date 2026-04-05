@@ -1,0 +1,14 @@
+# Project
+bin/
+models/
+reports/
+
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

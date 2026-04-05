@@ -1,0 +1,36 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build binary (linux/amd64) via Docker
+        run: make docker vendor build
+
+      - name: Package zip
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          ARTIFACT="acho-${VERSION}-linux-amd64"
+          mkdir -p "dist/${ARTIFACT}"
+          cp bin/acho "dist/${ARTIFACT}/"
+          cp README.md "dist/${ARTIFACT}/" 2>/dev/null || true
+          cd dist && zip -r "${ARTIFACT}.zip" "${ARTIFACT}"
+          sha256sum "${ARTIFACT}.zip" > "${ARTIFACT}.zip.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/acho-${{ github.ref_name }}-linux-amd64.zip
+            dist/acho-${{ github.ref_name }}-linux-amd64.zip.sha256
+          generate_release_notes: true

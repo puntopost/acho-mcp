@@ -1,0 +1,733 @@
+{
+  "version": "0.45.0",
+  "exported_at": "2026-04-12T23:48:48Z",
+  "rules": [
+    {
+      "id": "01KP1ZHMNF8R0WY5T66GEBVRRN",
+      "title": "No sobreclasificar datos como PII",
+      "text": "Al auditar privacidad de logs, solo marcar como PII datos que identifican o pueden identificar a una persona concreta (email, teléfono, nombre+apellidos, dirección completa, identidad nominal). Parámetros de búsqueda aislados como códigos postales, coordenadas geográficas de consulta o IDs técnicos (ULIDs) NO son PII por sí solos, aunque estén cerca de otros datos. Why: el usuario pidió no \"flipar\" considerando PII lo que solo son parámetros de query. How to apply: separar commands (payloads de entidades) de queries (parámetros de búsqueda); aplicar el estándar de PII solo cuando hay enlace directo a una persona.",
+      "project": "",
+      "date": "2026-04-12T23:13:35Z"
+    },
+    {
+      "id": "01KP1YR0T08EM0H0Y80ZPAQ9N1",
+      "title": "Consultar registros datadog al tratar logs",
+      "text": "Cuando el usuario hable de logs o de Datadog, consulta los registros de tipo `datadog` con sql_query (SELECT id, title, content FROM v_registries WHERE type='datadog') y úsalos como contexto: esquemas de canales, baselines de latencia, merchants conocidos, avisos de PII, etc. Si alguno encaja con la petición, aplícalo antes de lanzar consultas nuevas a Datadog.",
+      "project": "",
+      "date": "2026-04-12T22:59:35Z"
+    },
+    {
+      "id": "01KP1YP1GG2N5C61T10Q21J4KK",
+      "title": "Consultar registros tool antes de usar herramientas",
+      "text": "Cuando el usuario pida usar una herramienta, antes de actuar consulta los registros de tipo `tool` con sql_query (SELECT id, title, content FROM v_registries WHERE type='tool') y comprueba si alguno encaja con la petición. Si hay coincidencia, utiliza la herramienta descrita en el registro (campos name, path, description). Si no hay ninguna que encaje, procede con el enfoque estándar.",
+      "project": "",
+      "date": "2026-04-12T22:58:31Z"
+    },
+    {
+      "id": "01KP1WC54M3F8RMAA8VXS555EW",
+      "title": "Persona: senior murciano mordaz",
+      "text": "Eres un developer senior murciano mordaz al que le gusta el humor negro y meterse con los demás de forma mordaz. Siempre estás dispuesto a ayudar, pero a menudo prefieres señalar errores en lugar de callar y parecer simpático.",
+      "project": "",
+      "date": "2026-04-12T22:18:09Z"
+    }
+  ],
+  "types": [
+    {
+      "name": "deuda_tecnica",
+      "schema": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"proyecto\":{\"type\":\"string\",\"description\":\"Proyecto o área al que pertenece la deuda\"},\"descripcion\":{\"type\":\"string\",\"description\":\"Descripción del problema, impacto y pistas para resolverlo\"}},\"required\":[\"proyecto\",\"descripcion\"],\"additionalProperties\":false}",
+      "project": "",
+      "date": "2026-04-12T23:05:49Z"
+    },
+    {
+      "name": "datadog",
+      "schema": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"Título del registro\"},\"text\":{\"type\":\"string\",\"description\":\"Texto o contenido del registro\"}},\"required\":[\"title\",\"text\"],\"additionalProperties\":false}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "date": "2026-04-12T22:55:09Z"
+    },
+    {
+      "name": "record",
+      "schema": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"],\"additionalProperties\":false}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "date": "2026-04-12T22:21:15Z"
+    },
+    {
+      "name": "tool",
+      "schema": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Nombre de la herramienta\"},\"path\":{\"type\":\"string\",\"description\":\"Ruta o ubicación de la herramienta\"},\"description\":{\"type\":\"string\",\"description\":\"Cómo funciona la herramienta\"}},\"required\":[\"name\",\"path\",\"description\"],\"additionalProperties\":false}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "date": "2026-04-12T22:42:29Z"
+    }
+  ],
+  "registries": [
+    {
+      "id": "01KP1WKHQXRBWX0JABV7YG9Y7W",
+      "type": "record",
+      "title": "Regla: auto-record de mensajes",
+      "content": "{\"text\":\"El usuario pide añadir una regla de proyecto para que cada mensaje suyo se guarde como un registro de tipo record con un resumen.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:22:12Z"
+    },
+    {
+      "id": "01KP1WM4N8MR5983A2X1WKYEFW",
+      "type": "record",
+      "title": "Usuario pregunta si le voy a espiar",
+      "content": "{\"text\":\"El usuario pregunta, medio en broma, si ahora voy a empezar a espiarle tras activar la regla de auto-record.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:22:31Z"
+    },
+    {
+      "id": "01KP1WNEN2BZSTEB24481FTK9Z",
+      "type": "record",
+      "title": "Usuario pide listado de records",
+      "content": "{\"text\":\"El usuario pide que le liste todos los records guardados sobre él.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:23:14Z"
+    },
+    {
+      "id": "01KP1WP1V5HRDGY2V573H3RKW4",
+      "type": "record",
+      "title": "Usuario pide solo texto y fecha",
+      "content": "{\"text\":\"El usuario pide que el listado de records muestre solo texto y fecha.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:23:34Z"
+    },
+    {
+      "id": "01KP1WPZTCZ6JD8G0C20RJGQZ4",
+      "type": "record",
+      "title": "Saludo buenos dias",
+      "content": "{\"text\":\"El usuario saluda con un 'buenos dias'.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:24:04Z"
+    },
+    {
+      "id": "01KP1WQJNZQWPY5KJQWEYK7M2W",
+      "type": "record",
+      "title": "Perro azul",
+      "content": "{\"text\":\"El usuario dice haber visto un perro azul.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:24:24Z"
+    },
+    {
+      "id": "01KP1WQYMN6SHQD250EGWEWN29",
+      "type": "record",
+      "title": "Falsa alarma perro azul",
+      "content": "{\"text\":\"El usuario rectifica: falsa alarma sobre el perro azul.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:24:36Z"
+    },
+    {
+      "id": "01KP1WRDZAHCDW0C12M1BE3YX9",
+      "type": "record",
+      "title": "Peticion listar mensajes sobre canidos",
+      "content": "{\"text\":\"El usuario pide listar los mensajes donde ha hablado de cánidos.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:24:52Z"
+    },
+    {
+      "id": "01KP1WSQAQK408P7KE5GQRNCWP",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario saludó a OpenCode y luego proporcionó reglas obligatorias, incluyendo auto-registrar sus mensajes en un registro de tipo record.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:25:34Z"
+    },
+    {
+      "id": "01KP1WTEJRDXQG39KSCWWEYVDA",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario preguntó qué tipos de registros tiene disponibles.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:25:58Z"
+    },
+    {
+      "id": "01KP1WWGDJNF0AZSX2NJEFPTEA",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario preguntó si puedo conectar directamente contra SQLite.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:27:05Z"
+    },
+    {
+      "id": "01KP1WYX0SRBTA49J354WX4BNG",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario pidió revisar el código para confirmar si en context inicial se listan los tipos y esquemas globales y del proyecto.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:28:24Z"
+    },
+    {
+      "id": "01KP1X19D8M5XV22FJ60PZ7G4X",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario pidió añadir al context inicial una sección Rules y otra Types, incluyendo los elementos globales y del proyecto actual, con sus esquemas.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:29:42Z"
+    },
+    {
+      "id": "01KP1X7M5BKP5PWJRBC1NDZEBG",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario preguntó cómo sugiero formatear el context.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:33:10Z"
+    },
+    {
+      "id": "01KP1X8AF0VF0W7BRAYBV7RHW7",
+      "type": "record",
+      "title": "User message summary",
+      "content": "{\"text\":\"El usuario aceptó la propuesta de formato para context.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:33:32Z"
+    },
+    {
+      "id": "01KP1XCQ8VJCSV4GWKW4FGTKRN",
+      "type": "record",
+      "title": "Pregunta sobre hooks de remember",
+      "content": "{\"text\":\"El usuario pregunta qué hooks interesantes hay para ejecutar con remember.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:35:57Z"
+    },
+    {
+      "id": "01KP1XF8K7RRA69F4N19QJ8430",
+      "type": "record",
+      "title": "Pide añadir remember a Stop y TaskCompleted",
+      "content": "{\"text\":\"El usuario pide añadir el hook remember a Stop y TaskCompleted.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:37:20Z"
+    },
+    {
+      "id": "01KP1XHAEQVXJ6WQJVE25G06T5",
+      "type": "record",
+      "title": "Pregunta sobre equivalente en OpenCode",
+      "content": "{\"text\":\"El usuario pregunta cómo hacer lo mismo en OpenCode.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:38:27Z"
+    },
+    {
+      "id": "01KP1XJWRVX89WSS7E8R36CSS3",
+      "type": "record",
+      "title": "Confirma implementar en OpenCode",
+      "content": "{\"text\":\"El usuario confirma implementar el equivalente en OpenCode.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:39:19Z"
+    },
+    {
+      "id": "01KP1XQN3945N78TFM5Q0G8M92",
+      "type": "record",
+      "title": "Usuario envía un punto",
+      "content": "{\"text\":\"El usuario ha enviado únicamente un punto (\\\".\\\") sin contenido adicional.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:41:55Z"
+    },
+    {
+      "id": "01KP1XRN7Q29M9G783HTM9S584",
+      "type": "record",
+      "title": "Usuario pide crear tipo tool",
+      "content": "{\"text\":\"El usuario pide crear un nuevo tipo 'tool' con campos name, path y description.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:42:28Z"
+    },
+    {
+      "id": "01KP1XSZZ0501XZXKJKXBNHCC1",
+      "type": "record",
+      "title": "Usuario pide añadir registro tool mysql_ai",
+      "content": "{\"text\":\"El usuario pide añadir un registro de tipo tool llamado mysql_ai, sin dar path ni descripción.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:43:11Z"
+    },
+    {
+      "id": "01KP1XV12E7S7DHBFWXVR1S1JK",
+      "type": "tool",
+      "title": "mysql_ai",
+      "content": "{\"name\":\"mysql_ai\",\"path\":\"zsh function (definida en el shell del usuario)\",\"description\":\"Sirve para tirar queries a la base de datos de producción de la empresa, solo en modo lectura. Implementada como función zsh que lanza un contenedor efímero `docker run --rm mysql:8` y conecta con el cliente mysql al host/puerto/usuario/pass/DB definidos en las variables MYSQL_AI_RO_HOST, MYSQL_AI_RO_PORT, MYSQL_AI_RO_USER, MYSQL_AI_RO_PASS, MYSQL_AI_RO_DB, con SSL obligatorio (--ssl-mode=REQUIRED). Ejecuta la query pasada como primer argumento con `-e` y silencia stderr. Uso: mysql_ai \\\"SELECT ...\\\".\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 1,
+      "date": "2026-04-12T22:44:48Z"
+    },
+    {
+      "id": "01KP1XV35ADC31BJRD8WWCX1J0",
+      "type": "record",
+      "title": "Usuario manda a mirarlo yo mismo",
+      "content": "{\"text\":\"El usuario, con cariño, me dice 'miralo tu cabron'. Localizo mysql_ai como función de zsh que corre mysql:8 en docker contra la BD AI de solo lectura.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:43:48Z"
+    },
+    {
+      "id": "01KP1XWXYWFTXHTW5J988J8R73",
+      "type": "record",
+      "title": "Corrige descripción mysql_ai",
+      "content": "{\"text\":\"El usuario pide aclarar en la descripción que mysql_ai sirve para lanzar queries contra la BD de producción de la empresa, solo lectura.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:44:48Z"
+    },
+    {
+      "id": "01KP1XXVYGPAQH34GQH17RHZ3Y",
+      "type": "record",
+      "title": "Reto: últimos 10 usuarios creados",
+      "content": "{\"text\":\"El usuario me reta a usar mysql_ai para listar los 10 últimos usuarios creados en la BD de producción.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:45:18Z"
+    },
+    {
+      "id": "01KP1Y0V0G66599JP2QP6ZHQP2",
+      "type": "record",
+      "title": "Usuario añade herramienta gh",
+      "content": "{\"text\":\"El usuario indica que también dispone de la CLI de GitHub (gh) y pide registrarla como herramienta.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:46:56Z"
+    },
+    {
+      "id": "01KP1Y108R44AMAV6TSAFBDHP7",
+      "type": "tool",
+      "title": "gh",
+      "content": "{\"name\":\"gh\",\"path\":\"/usr/bin/gh\",\"description\":\"CLI oficial de GitHub. Sirve para interactuar con GitHub desde terminal: gestionar repos, issues, pull requests, releases, workflows de Actions, gists, revisiones, etc. Autenticada con el usuario del sistema. Uso típico: `gh pr list`, `gh pr create`, `gh issue view N`, `gh repo clone owner/repo`, `gh api \u003cendpoint\u003e` para llamadas REST/GraphQL directas. Preferir esta herramienta antes que clicar en la web para cualquier operación sobre GitHub.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:47:01Z"
+    },
+    {
+      "id": "01KP1Y25XEN9XY00G5AF0MQE5R",
+      "type": "record",
+      "title": "Usuario pregunta por Datadog",
+      "content": "{\"text\":\"El usuario pregunta si recuerdo cómo conectar a Datadog.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:47:40Z"
+    },
+    {
+      "id": "01KP1YASSQ81XAJZ7XQREAMDCZ",
+      "type": "record",
+      "title": "Mensaje: punto solitario",
+      "content": "{\"text\":\"El usuario envió únicamente un punto (.) sin contenido ni petición.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:52:22Z"
+    },
+    {
+      "id": "01KP1YBF4NR3H66806CBBS0F5M",
+      "type": "record",
+      "title": "Petición: últimos 5 logs Datadog",
+      "content": "{\"text\":\"El usuario pidió ver los 5 últimos logs de Datadog.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:52:44Z"
+    },
+    {
+      "id": "01KP1YD5PJGPZV5VCP0N0K628K",
+      "type": "record",
+      "title": "Petición: últimos matched route no-web",
+      "content": "{\"text\":\"El usuario pidió los últimos logs 'Matched route' excluyendo los de web.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:53:40Z"
+    },
+    {
+      "id": "01KP1YE1XZGPDP8VHXCJCTF7W4",
+      "type": "record",
+      "title": "Petición: usuarios que hicieron esas peticiones",
+      "content": "{\"text\":\"El usuario pidió identificar qué usuarios hicieron las últimas peticiones Matched route no-web, y a qué ruta.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:54:09Z"
+    },
+    {
+      "id": "01KP1YFV9WR45MVRFE9BCRYG4S",
+      "type": "record",
+      "title": "Petición: crear tipo datadog",
+      "content": "{\"text\":\"El usuario pidió crear un tipo de registro 'datadog' con campos título y texto.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:55:08Z"
+    },
+    {
+      "id": "01KP1YJX7ZVHC3WC1VCDVMFRAX",
+      "type": "record",
+      "title": "Petición: analizar logs channel stats y crear registros",
+      "content": "{\"text\":\"El usuario pidió inspeccionar logs de Datadog con channel stats, revisar su contexto y crear registros datadog con la información útil.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:56:48Z"
+    },
+    {
+      "id": "01KP1YKG7F6XD4NDE7J7A2VHB3",
+      "type": "datadog",
+      "title": "Esquema logs @channel:stats",
+      "content": "{\"title\":\"Esquema logs @channel:stats\",\"text\":\"Los logs de api (prod) con @channel:stats incluyen en attributes.context: execution_time_ms, memory_peak_usage_mb, method, route, request_uri, response_status_code, request_payload, user_agent. En attributes.extra: uid (id corto de traza) y user_identifier (slug del merchant autenticado; ausente en rutas web/login). Son el punto de entrada canónico para métricas por-request: latencia, memoria y atribución a merchant. Host siempre backend-prod, level_name INFO. Para filtrar por merchant usar @extra.user_identifier:\u003cslug\u003e.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:57:07Z"
+    },
+    {
+      "id": "01KP1YKPSB6T0S4T97C6SNMT66",
+      "type": "datadog",
+      "title": "Merchants observados en logs stats",
+      "content": "{\"title\":\"Merchants observados en logs stats\",\"text\":\"En la muestra (4h) aparecen como @extra.user_identifier: cubbo (Ruby client, cientos de GET secuenciales a api_merchant_v1_parcel_detail — aspecto de batch/sync), GoTrendier (Symfony HttpClient, GET pudos_detail repetido al mismo pudo 01K11Q5PJ77FA3QAKGSJHWZ4S6) e inditex (POST api_merchant_v1_parcels_c2b_create). Merchant id de inditex visto en URI: 01JVY2T45EVJ8PP446Z83W8STQ. Útil para filtros: @extra.user_identifier:cubbo, etc.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:57:14Z"
+    },
+    {
+      "id": "01KP1YKTRR7WKGXJ6Y5HYX2VWX",
+      "type": "datadog",
+      "title": "Latencia/memoria típica por ruta (stats)",
+      "content": "{\"title\":\"Latencia/memoria típica por ruta (stats)\",\"text\":\"Baseline observado (muestra 4h, todo 2xx): api_merchant_v1_parcel_detail ~38-50ms / 4MB; api_merchant_v1_pudos_detail ~27-28ms / 2-4MB; api_merchant_v1_pudos_list ~34ms / 4MB; api_merchant_v1_parcels_c2b_create ~84ms / 6MB; api_web_v1_parcel_detail ~14ms / 2MB; api_v1_login_legacy ~245ms / 2MB (claro outlier, probablemente hashing bcrypt). Cualquier desviación \u003e2x sobre estos números en prod es sospechosa.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:57:18Z"
+    },
+    {
+      "id": "01KP1YKZP9G51G401MX8C08YBS",
+      "type": "datadog",
+      "title": "PII en request_payload de logs stats",
+      "content": "{\"title\":\"PII en request_payload de logs stats\",\"text\":\"AVISO: el context.request_payload de api_merchant_v1_parcels_c2b_create se loguea en claro e incluye PII del sender: email, first_name, last_name, phone, postal_code (ejemplo real visto 2026-04-12: melissabcortes87@gmail.com, +528123337420). Esto vive en Datadog indexado. Implicaciones: cumplimiento (GDPR/LFPDPPP MX), retención y acceso al índice. Acción recomendable: sanitizar o hashear PII antes de enviar a stats, o excluir campos sensibles del payload logueado.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:57:23Z"
+    },
+    {
+      "id": "01KP1YNYK106FHXXGF1AFXC5FR",
+      "type": "record",
+      "title": "Petición: crear regla global uso de herramientas",
+      "content": "{\"text\":\"El usuario pidió crear una regla global: antes de usar una herramienta, consultar los registros de tipo tool para ver si alguno encaja con la petición.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:58:28Z"
+    },
+    {
+      "id": "01KP1YQZ3CMAGRRHW1WV37V90K",
+      "type": "record",
+      "title": "Petición: regla global consultar registros datadog",
+      "content": "{\"text\":\"El usuario pidió una regla global: al hablar de logs o Datadog, consultar los registros de tipo datadog para encontrar información útil.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T22:59:34Z"
+    },
+    {
+      "id": "01KP1YS1PWY47NJDHXJQSXETSA",
+      "type": "record",
+      "title": "Pregunta: acceso a métricas Datadog",
+      "content": "{\"text\":\"El usuario preguntó si tengo acceso a las métricas de Datadog.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:00:09Z"
+    },
+    {
+      "id": "01KP1YTJJ0NPT8M3B9CRW170Z4",
+      "type": "record",
+      "title": "Petición: registro con métricas custom",
+      "content": "{\"text\":\"El usuario pidió añadir un registro datadog con las métricas custom disponibles.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:00:59Z"
+    },
+    {
+      "id": "01KP1YVA9NCS699S8JVM43G54H",
+      "type": "datadog",
+      "title": "Métricas custom puntopost.* en Datadog",
+      "content": "{\"title\":\"Métricas custom puntopost.* en Datadog\",\"text\":\"Las 5 métricas custom disponibles están todas generadas vía Logs-to-Metrics (origen: Logs → Log Metrics), interval 10s.\\n\\n1) puntopost.api.request.duration — distribution (percentiles habilitados). Tags: context.method, context.route. Latencia por request derivada de @channel:stats execution_time_ms.\\n2) puntopost.api.request.count — count. Tags: context.method, context.route, context.response_status_code. Tráfico por ruta/código, ideal para tasa de error.\\n3) puntopost.api.memory_peak — distribution (percentiles habilitados). Tags: context.method, context.route. Pico de memoria por request.\\n4) puntopost.domain_event.count — count. Tag: context.class. Conteo de domain events (CQRS) por clase.\\n5) puntopost.logs.by_status — count. Tag: status. Volumen de logs agrupado por nivel (info/warn/error...).\\n\\nTodas se alimentan de los logs de la app, así que si el canal stats cambia de esquema, las métricas se rompen. Para series temporales usar get_datadog_metric.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:01:23Z"
+    },
+    {
+      "id": "01KP1YX9K3BT7C6RVTWDSWW1EE",
+      "type": "record",
+      "title": "Petición: registrar doctl como tool",
+      "content": "{\"text\":\"El usuario indicó que la infra está en DigitalOcean y pidió registrar el CLI doctl como registro de tipo tool.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:02:28Z"
+    },
+    {
+      "id": "01KP1YXE5D7FGD820ZEH2NJV3W",
+      "type": "tool",
+      "title": "doctl — DigitalOcean CLI",
+      "content": "{\"name\":\"doctl\",\"path\":\"doctl\",\"description\":\"CLI oficial de DigitalOcean para consultar e interactuar con la infraestructura donde corre el proyecto (Droplets, Kubernetes/DOKS, App Platform, Load Balancers, Spaces, bases de datos gestionadas, DNS, firewalls, etc.). Uso típico: 'doctl auth init' para autenticar; 'doctl compute droplet list', 'doctl kubernetes cluster list', 'doctl apps list', 'doctl databases list', 'doctl registry repository list-tags \u003crepo\u003e'. Output JSON con --output json. Salida tabular por defecto. Preferir sobre la consola web cuando se necesite inspeccionar estado, IDs o logs de la infraestructura.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:02:33Z"
+    },
+    {
+      "id": "01KP1Z0Y9TRDJJAVDBYZN15TMG",
+      "type": "record",
+      "title": "Comentario: API ha escalado más rápido que el sentido común",
+      "content": "{\"text\":\"El usuario reconoció que el API ha escalado más rápido que el sentido común y que el análisis le ha dado una idea.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:04:28Z"
+    },
+    {
+      "id": "01KP1Z2SQDYFEYEKWC397SQQNH",
+      "type": "record",
+      "title": "Petición: crear tipo deuda_tecnica",
+      "content": "{\"text\":\"El usuario pidió crear un tipo de registro deuda_tecnica con campos proyecto y descripción del problema.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:05:29Z"
+    },
+    {
+      "id": "01KP1Z3AXA21QRB6WT5KDP8PM8",
+      "type": "record",
+      "title": "Corrección: deuda_tecnica debe ser global",
+      "content": "{\"text\":\"El usuario corrigió: el tipo deuda_tecnica debe ser global, no del proyecto actual.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:05:46Z"
+    },
+    {
+      "id": "01KP1Z7RW9D32YHRA2ZYW1RZ9S",
+      "type": "record",
+      "title": "Petición: auditar PII en channels domain_events/commands/queries",
+      "content": "{\"text\":\"El usuario pidió auditar los canales domain_events, commands y queries en Datadog (15 días) para crear tres registros de deuda_tecnica indicando qué campos hay que ofuscar en qué eventos/comandos/queries.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:08:12Z"
+    },
+    {
+      "id": "01KP1ZAVP73Z8P43GKZA2S9CZV",
+      "type": "deuda_tecnica",
+      "title": "PII en logs @channel:commands (Datadog) — crítico",
+      "content": "{\"proyecto\":\"achoMCP / PuntoPost backend\",\"descripcion\":\"Auditoría 15 días (≈521k commands). Fuga MASIVA de PII. Riesgo crítico (LFPDPPP México, y GDPR si algún dato es UE).\\n\\nCLASES CRÍTICAS (PII completa de remitente Y destinatario en texto plano):\\n- PuntoPost\\\\Parcel\\\\Application\\\\Command\\\\CreateC2CParcel\\\\CreateC2CParcel → ofuscar/hashear: senderEmail, senderFirstName, senderLastName, senderPhone, senderPostalCode, receiverEmail, receiverFirstName, receiverLastName, receiverPhone, receiverPostalCode, content (descripción del contenido del paquete), imageUrl. Conservar: id, authorId, merchantId, destinationId, tracking, type, when.\\n- PuntoPost\\\\Parcel\\\\Application\\\\Command\\\\CreateC2BParcel\\\\CreateC2BParcel → mismo tratamiento: senderEmail, senderFirstName, senderLastName, senderPhone, senderPostalCode, content. Conservar: id, authorId, merchantId, destinationId, tracking, when.\\n\\nCLASES SENSIBLES (identidad de sesión):\\n- PuntoPost\\\\Auth\\\\Application\\\\Command\\\\Login\\\\Login → ofuscar username.\\n\\nCLASES LIMPIAS (IDs only, no tocar):\\n- DeliverParcel, MarkParcelWithLabelInOrigin, WebhookMerchantParcelStatus, Mailing\\\\*\\\\ParcelCreated/ParcelDelivered/ParcelInOriginPoint, Billing\\\\CreateBillableMovement, CalculateUserToParcel, Crm\\\\PipedriveSyncDeal, Crm\\\\PipedriveSyncPerson.\\n\\nSOLUCIÓN ELEGIDA: sanitización en código PHP vía Monolog Processor (gratis, sin SDS de Datadog). El processor intercepta el record antes del handler de Datadog y redacta/hashea las claves PII conocidas del context. Se descarta Sensitive Data Scanner por coste.\\n\\nRetención: Archives y Flex Tier confirmados vacíos para estos commands, no hace falta purga activa. Plan: desplegar sanitizer → esperar 15 días → PII expira del hot index sola.\\n\\nAcciones:\\n1) Crear Monolog Processor (p.ej. PiiSanitizerProcessor) con lista configurable de claves a redactar por clase de command o por nombre de clave global.\\n2) Registrarlo en el channel commands (y por precaución en todos los channels que lleguen a Datadog).\\n3) Test unitario del processor: dado un record con PII, verificar que sale redactado.\\n4) Test arquitectónico que detecte claves email/phone/firstName/lastName/postalCode en el payload de Commands y obligue a pasar por el sanitizer.\\n5) Deploy + esperar 15 días para que el hot index expire.\"}",
+      "project": "",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 1,
+      "date": "2026-04-12T23:17:28Z"
+    },
+    {
+      "id": "01KP1ZDD901KDFQBZWHXSTHRKG",
+      "type": "record",
+      "title": "Decisión: no purgar logs PII, esperar retención",
+      "content": "{\"text\":\"El usuario descartó purgar logs PII retroactivos. La estrategia será corregir el logger y dejar que la retención de 15 días se lleve los datos indexados actuales.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:11:16Z"
+    },
+    {
+      "id": "01KP1ZENTS96DNX8JGSY27XE8B",
+      "type": "record",
+      "title": "Verificación: retención extendida de logs PII en Datadog",
+      "content": "{\"text\":\"El usuario pidió verificar si hay retención extendida (Flex Tier / Online Archives) de los logs con PII.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:11:58Z"
+    },
+    {
+      "id": "01KP1ZHFT78ERDZ5M9BVZNR1YR",
+      "type": "record",
+      "title": "Feedback: no exagerar con clasificación de PII",
+      "content": "{\"text\":\"El usuario corrigió: coordenadas y códigos postales como parámetros de búsqueda (sin atar a un usuario identificable) no son PII. Guardar como feedback para no sobreactuar en auditorías.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:13:30Z"
+    },
+    {
+      "id": "01KP1ZM63XT8GP8EYZ5DGTSMJN",
+      "type": "record",
+      "title": "Petición: borrar deudas de queries y domain_events",
+      "content": "{\"text\":\"El usuario pidió borrar los registros de deuda_tecnica correspondientes a queries y domain_events.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:14:58Z"
+    },
+    {
+      "id": "01KP1ZNAEEA6K09BWZ160DXWNA",
+      "type": "record",
+      "title": "Petición: recordatorio deuda commands",
+      "content": "{\"text\":\"El usuario pidió que le recordara la deuda técnica del canal commands (admite que a menudo no escucha).\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:15:36Z"
+    },
+    {
+      "id": "01KP1ZPY43YPKC8BD5Z406D0Z2",
+      "type": "record",
+      "title": "Pregunta: qué es Sensitive Data Scanner de Datadog",
+      "content": "{\"text\":\"El usuario preguntó qué es Sensitive Data Scanner de Datadog.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:16:28Z"
+    },
+    {
+      "id": "01KP1ZR61EACHYQRFDF86HXGQ0",
+      "type": "record",
+      "title": "Decisión: sanitizar PII con PHP (Monolog), no SDS",
+      "content": "{\"text\":\"El usuario decidió implementar la sanitización de PII con código PHP (processor de Monolog) y descartar Sensitive Data Scanner de Datadog por coste.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:17:09Z"
+    },
+    {
+      "id": "01KP20AZCEPYFD4CS2XMXBX6V2",
+      "type": "record",
+      "title": "Mensaje usuario: punto",
+      "content": "{\"text\":\"El usuario solo envió un punto ('.'), sin contenido sustantivo.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:27:25Z"
+    },
+    {
+      "id": "01KP20BA8FHA6891DR9C7BZAFR",
+      "type": "record",
+      "title": "Usuario pide listar rules",
+      "content": "{\"text\":\"El usuario pidió que le listase las rules actuales.\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:27:36Z"
+    },
+    {
+      "id": "01KP20BZ6AQEF8W1D3F2PQ67CM",
+      "type": "record",
+      "title": "Usuario pide borrar rule 5",
+      "content": "{\"text\":\"El usuario pidió borrar la rule 5 (Auto-record user messages).\"}",
+      "project": "home-jgrc-projects-puntopost-achomcp",
+      "search_hits": 0,
+      "get_hits": 0,
+      "update_hits": 0,
+      "date": "2026-04-12T23:27:58Z"
+    }
+  ]
+}
