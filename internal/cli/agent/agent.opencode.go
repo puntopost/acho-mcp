@@ -20,6 +20,9 @@ type OpenCode struct{}
 func (o *OpenCode) Name() string        { return "opencode" }
 func (o *OpenCode) Description() string { return "Register acho as MCP server in OpenCode" }
 
+func (o *OpenCode) FormatContext(body string) string  { return body }
+func (o *OpenCode) FormatRemember(body string) string { return body }
+
 // OpenCodePluginFS is set by main.go with the embedded OpenCode plugin files.
 var OpenCodePluginFS fs.FS
 
@@ -64,10 +67,6 @@ func (o *OpenCode) Setup() error {
 		"enabled": true,
 	}
 
-	if err := ensureStringInArray(cfg, "instructions", "instructions/acho.md"); err != nil {
-		return err
-	}
-
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("failed to create OpenCode config directory: %w", err)
 	}
@@ -104,27 +103,6 @@ func ensureObject(root map[string]any, key string) (map[string]any, error) {
 	object := map[string]any{}
 	root[key] = object
 	return object, nil
-}
-
-func ensureStringInArray(root map[string]any, key string, value string) error {
-	if current, ok := root[key]; ok {
-		entries, ok := current.([]any)
-		if !ok {
-			return fmt.Errorf("OpenCode config key %q must be an array", key)
-		}
-
-		for _, entry := range entries {
-			if s, ok := entry.(string); ok && s == value {
-				return nil
-			}
-		}
-
-		root[key] = append(entries, value)
-		return nil
-	}
-
-	root[key] = []any{value}
-	return nil
 }
 
 func extractOpenCodeFiles(destRoot string) error {

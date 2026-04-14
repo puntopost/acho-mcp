@@ -96,7 +96,6 @@ Así Acho deja de ser un cajón de notas y se convierte en un contexto vivo que 
 Para inspección y gestión sin pasar por el agente:
 
 ```
-acho context                              # reglas obligatorias del proyecto
 acho rules list
 acho rules delete <id>
 acho types list

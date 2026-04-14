@@ -14,7 +14,7 @@ async function inject(client, sessionID, text) {
 
 async function achoContext($) {
   try {
-    const output = await $`acho context`.quiet()
+    const output = await $`acho internal context opencode`.quiet()
     return output.text().trim()
   } catch {
     return ""
@@ -30,12 +30,17 @@ async function achoEnabled($) {
   }
 }
 
-function rememberText() {
-  return "Check the ==MANDATORY== rules loaded at session start. Some may require you to act before answering this message (e.g., query sql_query, save a registry, apply a convention)."
+async function rememberText($) {
+  try {
+    const output = await $`acho internal remember opencode`.quiet()
+    return output.text().trim()
+  } catch {
+    return ""
+  }
 }
 
-async function remember(client, sessionID) {
-  await inject(client, sessionID, rememberText())
+async function remember(client, $, sessionID) {
+  await inject(client, sessionID, await rememberText($))
 }
 
 function todoStatus(value) {
@@ -78,12 +83,12 @@ export const AchoPlugin = async ({ client, $ }) => {
       }
 
       if (event.type === "session.idle") {
-        await remember(client, event.properties.sessionID)
+        await remember(client, $, event.properties.sessionID)
         return
       }
 
       if (event.type === "todo.updated" && todoCompleted(event.properties)) {
-        await remember(client, event.properties.sessionID)
+        await remember(client, $, event.properties.sessionID)
       }
     },
   }

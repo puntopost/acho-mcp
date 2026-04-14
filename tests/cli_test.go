@@ -115,10 +115,52 @@ func TestHelpListsAllCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "context", "stats", "export", "import", "project", "rules list", "rules delete", "types list", "types delete", "--version", "--help"} {
+	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "stats", "export", "import", "project", "rules list", "rules delete", "types list", "types delete", "--version", "--help"} {
 		if !strings.Contains(stdout, cmd) {
 			t.Errorf("expected help to list %q", cmd)
 		}
+	}
+	for _, hidden := range []string{"internal context", "internal remember"} {
+		if strings.Contains(stdout, hidden) {
+			t.Errorf("did not expect help to list hidden command %q", hidden)
+		}
+	}
+}
+
+func TestInternalContextAndRemember(t *testing.T) {
+	env := freshEnv(t)
+	env.mustRun(t, "project", "enable")
+
+	stdout, _, code := env.run("internal", "context", "opencode")
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "# Acho Persistent Memory") {
+		t.Fatalf("expected shared context markdown, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "==MANDATORY==") {
+		t.Fatalf("expected rendered mandatory block, got %q", stdout)
+	}
+
+	stdout, _, code = env.run("internal", "remember", "opencode")
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "Check the ==MANDATORY== rules loaded at session start.") {
+		t.Fatalf("expected shared remember markdown, got %q", stdout)
+	}
+
+	stdout, _, code = env.run("internal", "remember", "claude")
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, `"systemMessage":`) {
+		t.Fatalf("expected claude systemMessage wrapper, got %q", stdout)
+	}
+
+	_, stderr, code := env.run("internal", "context")
+	if code == 0 {
+		t.Fatalf("expected non-zero exit when agent missing, stderr=%q", stderr)
 	}
 }
 
@@ -263,11 +305,12 @@ func TestCLIStats(t *testing.T) {
 	}
 }
 
-func TestCLIContext(t *testing.T) {
+func TestInternalContext(t *testing.T) {
 	env := freshEnv(t)
+	env.mustRun(t, "project", "enable")
 	env.mustMCP(t, "rule_create", `{"title":"project rule","text":"only for this project","project":"current"}`)
 	env.mustMCP(t, "type_create", `{"name":"decision","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"current"}`)
-	stdout := env.mustRun(t, "context")
+	stdout := env.mustRun(t, "internal", "context", "opencode")
 	if !strings.Contains(stdout, "MANDATORY") {
 		t.Errorf("expected MANDATORY block, got %q", stdout)
 	}
@@ -365,7 +408,8 @@ func TestCLIExportImportRoundTrip(t *testing.T) {
 	}
 
 	// Rule round-tripped (visible via context)
-	ctx := dst.mustRun(t, "context")
+	dst.mustRun(t, "project", "enable")
+	ctx := dst.mustRun(t, "internal", "context", "opencode")
 	if !strings.Contains(ctx, "round trip rule") {
 		t.Errorf("rule not imported: %q", ctx)
 	}
@@ -475,7 +519,7 @@ func TestCLIJuan(t *testing.T) {
 		t.Fatalf("expected Juan rule text, got %q", rules)
 	}
 
-	context := env.mustRun(t, "context", "--global")
+	context := env.mustRun(t, "internal", "context", "opencode")
 	juanIdx := strings.Index(context, juanTitle)
 	laterIdx := strings.Index(context, "later global rule")
 	if juanIdx == -1 || laterIdx == -1 || juanIdx > laterIdx {

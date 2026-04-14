@@ -7,6 +7,8 @@ type Setup interface {
 	Name() string
 	Description() string
 	Setup() error
+	FormatContext(body string) string
+	FormatRemember(body string) string
 }
 
 var registry []Setup

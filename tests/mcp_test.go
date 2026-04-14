@@ -63,22 +63,6 @@ func TestMCPUpdate(t *testing.T) {
 	}
 }
 
-func TestMCPContext(t *testing.T) {
-	env := freshEnv(t)
-	env.mustMCP(t, "rule_create", `{"title":"project rule","text":"only for this project","project":"current"}`)
-	env.mustMCP(t, "type_create", `{"name":"decision","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"current"}`)
-	result := env.mustMCP(t, "context", `{}`)
-	if !mcpContains(result, "MANDATORY") {
-		t.Errorf("expected context to contain MANDATORY wrapper, got %q", result)
-	}
-	projectName := env.projectName(t)
-	for _, expected := range []string{"Rules:", "Types:", "project rule", "[global] note", "[project:" + projectName + "] decision", `\"type\":\"object\"`} {
-		if !mcpContains(result, expected) {
-			t.Errorf("expected context to contain %q, got %q", expected, result)
-		}
-	}
-}
-
 func TestMCPDisabledProjectStartsEmpty(t *testing.T) {
 	env := newTestEnv(t)
 	result, stderr, code := env.listMCPTools()

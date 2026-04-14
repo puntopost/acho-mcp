@@ -18,6 +18,10 @@ type Command interface {
 	Order() int
 }
 
+type hiddenCommand interface {
+	Hidden() bool
+}
+
 var registry []Command
 
 func Register(cmd Command) {
@@ -35,6 +39,9 @@ func PrintUsage() {
 	fmt.Print(term.Banner())
 	fmt.Printf("%s%sUsage:%s\n", term.T.Bold(), term.T.Primary(), term.T.Reset())
 	for _, cmd := range registry {
+		if hidden, ok := cmd.(hiddenCommand); ok && hidden.Hidden() {
+			continue
+		}
 		fmt.Printf("  %s%-28s%s %s\n", term.T.Secondary(), cmd.Usage(), term.T.Reset(), cmd.Description())
 	}
 	fmt.Printf("\n%s%sGlobal flags:%s\n", term.T.Bold(), term.T.Primary(), term.T.Reset())

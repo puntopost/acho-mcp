@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh",
+            "command": "acho internal context claude",
             "timeout": 10,
             "statusMessage": "Loading acho memory..."
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh",
+            "command": "acho internal context claude",
             "timeout": 10,
             "statusMessage": "Reloading acho memory after compaction..."
           }
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/remember.sh",
+            "command": "acho internal remember claude",
             "timeout": 2
           }
         ]
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/remember.sh",
+            "command": "acho internal remember claude",
             "timeout": 2,
             "async": true
           }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/remember.sh",
+            "command": "acho internal remember claude",
             "timeout": 2
           }
         ]
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/remember.sh",
+            "command": "acho internal remember claude",
             "timeout": 2
           }
         ]

@@ -16,7 +16,7 @@ It stores **rules** (mandatory instructions loaded at the start of every session
 - `registries(id, type, title, content, content_flat, project, search_hits, get_hits, update_hits, date)`
   - `content` is a JSON object validated against the schema of its `type` (enforced by `CHECK(json_valid(content))` + service-level schema validation)
   - `content_flat` is a space-separated concatenation of the JSON leaf values; FTS5 indexes this, not `content`
-- `rules(id, title, text, project, date)` — free-text rules; served via `context` wrapped in `==MANDATORY==...==END==`
+- `rules(id, title, text, project, date)` — free-text rules; injected to agents at session start wrapped in `==MANDATORY==...==END==`
 - `registry_types(name, schema, project, date)` — `schema` is a JSON Schema (draft 2020-12, validated via `santhosh-tekuri/jsonschema/v5`)
 
 ### Project resolution
@@ -37,7 +37,6 @@ The `sql_query` tool exposes these views only. The raw tables are blocked by a r
 
 | tool | purpose |
 |---|---|
-| `context` | loads rules for the session wrapped in `==MANDATORY==`; also reports if no types are defined |
 | `rule_create`, `rule_update`, `rule_delete` | manage rules |
 | `type_create`, `type_delete` | manage registry types (immutable once created; `force=true` cascades registries on delete) |
 | `registry_create`, `registry_update`, `registry_get`, `registry_delete` | registry CRUD; create/update validate content against the resolved type's schema |
@@ -46,7 +45,7 @@ The `sql_query` tool exposes these views only. The raw tables are blocked by a r
 ## Structure
 
 - `cmd/acho/` — CLI entrypoint
-- `internal/cli/commands/` — CLI commands (`registries list|get|delete`, `rules list|delete`, `types list|delete`, `context`, `stats`, `export`, `import`, `mcp`, `agent-setup`, `project`, `config`)
+- `internal/cli/commands/` — CLI commands (`registries list|get|delete`, `rules list|delete`, `types list|delete`, `stats`, `export`, `import`, `mcp`, `agent-setup`, `project`, `config`, plus hidden internal agent-wiring commands)
 - `internal/cli/mcp/` — MCP server and tool registry
 - `internal/cli/mcp/tools/` — Individual MCP tools
 - `internal/cli/config/` — Configuration loading

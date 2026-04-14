@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 var _ Setup = (*Claude)(nil)
@@ -28,6 +29,13 @@ type Claude struct{}
 
 func (c *Claude) Name() string        { return "claude" }
 func (c *Claude) Description() string { return "Register acho as native Claude Code plugin" }
+
+func (c *Claude) FormatContext(body string) string { return body }
+
+func (c *Claude) FormatRemember(body string) string {
+	payload, _ := json.Marshal(map[string]string{"systemMessage": strings.TrimRight(body, "\n")})
+	return string(payload) + "\n"
+}
 
 func (c *Claude) Setup() error {
 	if _, err := exec.LookPath("claude"); err != nil {

@@ -35,7 +35,6 @@ func TestAgentSetupOpenCodeInstallsPluginAndConfig(t *testing.T) {
 		`"acho"`,
 		`"command": [`,
 		`"mcp"`,
-		`"instructions/acho.md"`,
 	} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("expected config to contain %q, got %s", want, config)
@@ -52,20 +51,12 @@ func TestAgentSetupOpenCodeInstallsPluginAndConfig(t *testing.T) {
 		`event.type === "session.idle"`,
 		`event.type === "todo.updated"`,
 		`acho project status`,
-		`Check the ==MANDATORY== rules loaded at session start.`,
+		`acho internal context`,
+		`acho internal remember`,
 	} {
 		if !strings.Contains(string(pluginData), want) {
 			t.Fatalf("expected plugin to contain %q, got %s", want, pluginData)
 		}
-	}
-
-	instructionsPath := filepath.Join(configHome, "opencode", "instructions", "acho.md")
-	instructionsData, err := os.ReadFile(instructionsPath)
-	if err != nil {
-		t.Fatalf("read OpenCode instructions: %v", err)
-	}
-	if !strings.Contains(string(instructionsData), "Use `acho` as the project's persistent memory MCP server.") {
-		t.Fatalf("expected instructions content, got %s", instructionsData)
 	}
 
 	manifestPath := filepath.Join(configHome, "opencode", "package.json")
