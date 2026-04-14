@@ -1,5 +1,7 @@
 package store
 
+import "github.com/puntopost/acho-mcp/internal/persistence"
+
 type Repository interface {
 	NextID() string
 	Save(registry Registry) error
@@ -15,7 +17,8 @@ type Repository interface {
 }
 
 type Stats struct {
-	ByProject map[string]int
-	ByType    map[string]int
-	Total     int
+	ByProject    map[string]persistence.Counts
+	ByType       map[string]persistence.Counts
+	TotalActive  int
+	TotalDeleted int
 }

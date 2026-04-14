@@ -113,12 +113,11 @@ func printItemPreview(item store.RegistryItem) {
 		}
 		deletedTag = fmt.Sprintf(" %s[DELETED%s]%s", term.T.Danger(), d, term.T.Reset())
 	}
-	fmt.Printf("%s (%s%s%s) — %s%s%s%s\n  %s\n  %sproject: %s%s%s | date: %s | searches: %d | gets: %d | updates: %d%s\n\n",
+	fmt.Printf("%s (%s%s%s) — %s%s%s%s\n  %s\n  %sproject: %s%s%s | date: %s%s\n\n",
 		term.T.ID(item.ID), term.T.Primary(), item.Type, term.T.Reset(),
 		term.T.Bold(), item.Title, term.T.Reset(), deletedTag,
 		content,
 		term.T.Muted(),
 		term.T.Secondary(), projectLabel, term.T.Muted(),
-		item.Date.Format(cli.DateYMD_HM),
-		item.SearchHits, item.GetHits, item.UpdateHits, term.T.Reset())
+		item.Date.Format(cli.DateYMD_HM), term.T.Reset())
 }

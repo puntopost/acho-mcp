@@ -3,9 +3,11 @@ package commands
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/puntopost/acho-mcp/internal/cli/term"
+	"github.com/puntopost/acho-mcp/internal/persistence"
 )
 
 func init() {
@@ -26,7 +28,8 @@ func (c *stats) Help() string {
 Usage:
   acho stats
 
-No arguments. Shows totals grouped by project and type.
+No arguments. Shows active/deleted counts for registries, rules and types,
+broken down by project (and by type for registries).
 
 Examples:
   acho stats
@@ -44,77 +47,100 @@ func (c *stats) Run(args []string) error {
 	}
 	defer d.Close()
 
-	stats, err := d.Service.Stats()
+	regStats, err := d.Service.Stats()
+	if err != nil {
+		return err
+	}
+	ruleStats, err := d.Rules.Stats()
+	if err != nil {
+		return err
+	}
+	typeStats, err := d.Types.Stats()
 	if err != nil {
 		return err
 	}
 
-	box := term.NewBox(52)
+	box := term.NewBox(60)
 	box.Blank()
 	box.Title("Acho Stats")
 	box.Separator()
 
-	// Registries
-	box.Blank()
-	box.Section(fmt.Sprintf("Registries (%d total)", stats.Total))
+	section(box, "Registries", regStats.TotalActive, regStats.TotalDeleted,
+		regStats.ByProject, regStats.ByType)
 
-	if len(stats.ByProject) > 0 {
-		box.Blank()
-		box.Section("By project")
-		maxVal := maxCount(stats.ByProject)
-		labelW := maxLabelWidth(stats.ByProject)
-		for _, kv := range sortDesc(stats.ByProject) {
-			box.Bar(kv.key, kv.val, maxVal, labelW)
-		}
-	}
+	section(box, "Rules", ruleStats.TotalActive, ruleStats.TotalDeleted,
+		ruleStats.ByProject, nil)
 
-	if len(stats.ByType) > 0 {
-		box.Blank()
-		box.Section("By type")
-		maxVal := maxCount(stats.ByType)
-		labelW := maxLabelWidth(stats.ByType)
-		for _, kv := range sortDesc(stats.ByType) {
-			box.Bar(kv.key, kv.val, maxVal, labelW)
-		}
-	}
+	section(box, "Types", typeStats.TotalActive, typeStats.TotalDeleted,
+		typeStats.ByProject, nil)
 
 	box.Blank()
 	fmt.Print(box.String())
 	return nil
 }
 
-type kv struct {
+func section(box *term.Box, name string, active, deleted int, byProject, byType map[string]persistence.Counts) {
+	box.Blank()
+	box.Section(fmt.Sprintf("%s (%s active / %s deleted)", name,
+		term.T.Secondary()+term.T.Bold()+strconv.Itoa(active)+term.T.Reset(),
+		term.T.Danger()+term.T.Bold()+strconv.Itoa(deleted)+term.T.Reset(),
+	))
+
+	if len(byProject) > 0 {
+		box.Blank()
+		box.Section("By project")
+		drawBuckets(box, byProject)
+	}
+	if len(byType) > 0 {
+		box.Blank()
+		box.Section("By type")
+		drawBuckets(box, byType)
+	}
+}
+
+func drawBuckets(box *term.Box, m map[string]persistence.Counts) {
+	pairs := sortCountsDesc(m)
+	maxTotal := 0
+	maxLabel := 0
+	maxCount := 0
+	for _, p := range pairs {
+		if p.c.Total() > maxTotal {
+			maxTotal = p.c.Total()
+		}
+		if len(p.key) > maxLabel {
+			maxLabel = len(p.key)
+		}
+		if p.c.Active > maxCount {
+			maxCount = p.c.Active
+		}
+		if p.c.Deleted > maxCount {
+			maxCount = p.c.Deleted
+		}
+	}
+	countW := len(strconv.Itoa(maxCount))
+	if countW < 2 {
+		countW = 2
+	}
+	for _, p := range pairs {
+		box.SplitBar(p.key, p.c.Active, p.c.Deleted, maxTotal, maxLabel, countW)
+	}
+}
+
+type countsKV struct {
 	key string
-	val int
+	c   persistence.Counts
 }
 
-func sortDesc(m map[string]int) []kv {
-	pairs := make([]kv, 0, len(m))
+func sortCountsDesc(m map[string]persistence.Counts) []countsKV {
+	out := make([]countsKV, 0, len(m))
 	for k, v := range m {
-		pairs = append(pairs, kv{k, v})
+		out = append(out, countsKV{k, v})
 	}
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].val > pairs[j].val
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].c.Total() != out[j].c.Total() {
+			return out[i].c.Total() > out[j].c.Total()
+		}
+		return out[i].key < out[j].key
 	})
-	return pairs
-}
-
-func maxCount(m map[string]int) int {
-	max := 0
-	for _, v := range m {
-		if v > max {
-			max = v
-		}
-	}
-	return max
-}
-
-func maxLabelWidth(m map[string]int) int {
-	max := 0
-	for k := range m {
-		if len(k) > max {
-			max = len(k)
-		}
-	}
-	return max
+	return out
 }

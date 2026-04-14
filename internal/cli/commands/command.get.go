@@ -29,9 +29,7 @@ Arguments:
   id                     Registry ID (required). Shown in search and list results.
 
 Shows the complete content of a registry, including metadata:
-type, project, and hit counters (searches, gets, updates).
-
-Each call increments the get_hits counter for the registry.
+type, project, and date.
 
 Examples:
   acho registries get 01K...
@@ -70,16 +68,11 @@ func (c *get) Run(args []string) error {
 	fmt.Printf("%s (%s%s%s) — %s%s%s%s\n",
 		term.T.ID(r.ID), term.T.Primary(), r.Type, term.T.Reset(),
 		term.T.Bold(), r.Title, term.T.Reset(), deletedTag)
-	fmt.Printf("%sproject: %s%s%s | date: %s%s\n",
+	fmt.Printf("%sproject: %s%s%s | date: %s%s\n\n",
 		term.T.Muted(),
 		term.T.Secondary(), projectLabel, term.T.Muted(),
 		r.Date.Format(cli.DateYMD_HM),
 		term.T.Reset())
-	fmt.Printf("%ssearches: %s%d%s | gets: %s%d%s | updates: %s%d%s\n\n",
-		term.T.Muted(),
-		term.T.Secondary(), r.SearchHits, term.T.Muted(),
-		term.T.Secondary(), r.GetHits, term.T.Muted(),
-		term.T.Secondary(), r.UpdateHits, term.T.Reset())
 	fmt.Println(r.Content)
 	return nil
 }

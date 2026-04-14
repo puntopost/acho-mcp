@@ -43,28 +43,63 @@ func (b *Box) Section(title string) {
 	b.lines = append(b.lines, fmt.Sprintf("%s%s%s%s", T.Bold(), T.Accent(), title, T.Reset()))
 }
 
-func (b *Box) Bar(label string, count, max, labelWidth int) {
+// SplitBar renders a row with a two-tone bar: `active` segment in yellow,
+// `deleted` segment in red, sized relative to `max` (= max total across all
+// rows). The count column shows both numbers (yellow / red), right-aligned.
+func (b *Box) SplitBar(label string, active, deleted, max, labelWidth, countWidth int) {
 	inner := b.width - 6
-	barMax := inner - labelWidth - 9 // 2 indent + 2 gap + 2 gap + 3 count digits
+	// counts column width: "A/D" with each field padded to countWidth.
+	countsVisible := countWidth*2 + 1
+	// indent(2) + gap(2) + gap(2) = 6 around label/bar/counts
+	barMax := inner - labelWidth - countsVisible - 6
 	if barMax < 1 {
 		barMax = 1
 	}
-	barLen := 0
+
+	total := active + deleted
+	totalLen := 0
+	activeLen := 0
+	deletedLen := 0
 	if max > 0 {
-		barLen = (count * barMax) / max
+		totalLen = (total * barMax) / max
 	}
-	if barLen < 1 && count > 0 {
-		barLen = 1
+	if totalLen < 1 && total > 0 {
+		totalLen = 1
+	}
+	if totalLen > barMax {
+		totalLen = barMax
+	}
+	if total > 0 {
+		activeLen = (active * totalLen) / total
+		if activeLen < 1 && active > 0 {
+			activeLen = 1
+		}
+		if activeLen > totalLen {
+			activeLen = totalLen
+		}
+		deletedLen = totalLen - activeLen
 	}
 
-	bar := strings.Repeat("█", barLen)
-	pad := strings.Repeat(" ", barMax-barLen)
+	pad := strings.Repeat(" ", barMax-totalLen)
+	activeSeg := strings.Repeat("█", activeLen)
+	deletedSeg := strings.Repeat("█", deletedLen)
+
+	counts := fmt.Sprintf("%s%s%*d%s",
+		T.Bold(), T.Secondary(), countWidth, active, T.Reset(),
+	)
+	if deleted > 0 {
+		counts += fmt.Sprintf("%s/%s%s%s%d%s",
+			T.Muted(), T.Reset(),
+			T.Bold(), T.Danger(), deleted, T.Reset(),
+		)
+	}
 
 	b.lines = append(b.lines, fmt.Sprintf(
-		"  %s%-*s%s  %s%s%s%s  %s%s%3d%s",
+		"  %s%-*s%s  %s%s%s%s%s%s  %s",
 		T.Muted(), labelWidth, label, T.Reset(),
-		T.Primary(), bar, pad, T.Reset(),
-		T.Bold(), T.Secondary(), count, T.Reset(),
+		T.Secondary(), activeSeg, T.Reset(),
+		T.Danger(), deletedSeg, T.Reset(),
+		pad+counts,
 	))
 }
 

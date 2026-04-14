@@ -39,9 +39,6 @@ func (s *SQLiteRepository) migrate() error {
 			content      TEXT    NOT NULL,
 			content_flat TEXT    NOT NULL,
 			project      TEXT    NOT NULL,
-			search_hits  INTEGER NOT NULL,
-			get_hits     INTEGER NOT NULL,
-			update_hits  INTEGER NOT NULL,
 			date         INTEGER NOT NULL,
 			deleted      INTEGER NOT NULL DEFAULT 0,
 			deleted_date INTEGER,
@@ -68,14 +65,16 @@ func (s *SQLiteRepository) migrate() error {
 			WHERE new.deleted = 0;
 		END;
 
-		CREATE TRIGGER IF NOT EXISTS reg_fts_delete AFTER DELETE ON registries BEGIN
+		CREATE TRIGGER IF NOT EXISTS reg_fts_delete AFTER DELETE ON registries
+		WHEN old.deleted = 0 BEGIN
 			INSERT INTO registry_fts(registry_fts, rowid, title, content_flat, type, project)
 			VALUES ('delete', old.rowid, old.title, old.content_flat, old.type, old.project);
 		END;
 
 		CREATE TRIGGER IF NOT EXISTS reg_fts_update AFTER UPDATE ON registries BEGIN
 			INSERT INTO registry_fts(registry_fts, rowid, title, content_flat, type, project)
-			VALUES ('delete', old.rowid, old.title, old.content_flat, old.type, old.project);
+			SELECT 'delete', old.rowid, old.title, old.content_flat, old.type, old.project
+			WHERE old.deleted = 0;
 			INSERT INTO registry_fts(rowid, title, content_flat, type, project)
 			SELECT new.rowid, new.title, new.content_flat, new.type, new.project
 			WHERE new.deleted = 0;
@@ -86,21 +85,18 @@ func (s *SQLiteRepository) migrate() error {
 
 func (s *SQLiteRepository) Save(r Registry) error {
 	_, err := s.db.Exec(
-		`INSERT INTO registries (id, type, title, content, content_flat, project, search_hits, get_hits, update_hits, date)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO registries (id, type, title, content, content_flat, project, date)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			type = excluded.type,
 			title = excluded.title,
 			content = excluded.content,
 			content_flat = excluded.content_flat,
 			project = excluded.project,
-			search_hits = excluded.search_hits,
-			get_hits = excluded.get_hits,
-			update_hits = excluded.update_hits,
 			date = excluded.date
 		 WHERE deleted = 0`,
 		r.ID, r.Type, r.Title, r.Content, r.ContentFlat, r.Project,
-		r.SearchHits, r.GetHits, r.UpdateHits, r.Date.Unix(),
+		r.Date.Unix(),
 	)
 	if err != nil {
 		return fmt.Errorf("save registry %s: %w", r.ID, err)
@@ -117,7 +113,7 @@ func (s *SQLiteRepository) GetAny(id string) (*Registry, error) {
 }
 
 func (s *SQLiteRepository) getOne(id string, activeOnly bool) (*Registry, error) {
-	q := `SELECT id, type, title, content, content_flat, project, search_hits, get_hits, update_hits, date, deleted, deleted_date
+	q := `SELECT id, type, title, content, content_flat, project, date, deleted, deleted_date
 		  FROM registries WHERE id = ?`
 	if activeOnly {
 		q += ` AND deleted = 0`
@@ -150,7 +146,7 @@ func (s *SQLiteRepository) Delete(r Registry) error {
 
 func (s *SQLiteRepository) ExportAll() ([]Registry, error) {
 	rows, err := s.db.Query(
-		`SELECT id, type, title, content, content_flat, project, search_hits, get_hits, update_hits, date, deleted, deleted_date
+		`SELECT id, type, title, content, content_flat, project, date, deleted, deleted_date
 		 FROM registries WHERE deleted = 0 ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -170,11 +166,11 @@ func (s *SQLiteRepository) ExportAll() ([]Registry, error) {
 
 func (s *SQLiteRepository) Stats() (*Stats, error) {
 	st := &Stats{
-		ByProject: make(map[string]int),
-		ByType:    make(map[string]int),
+		ByProject: make(map[string]persistence.Counts),
+		ByType:    make(map[string]persistence.Counts),
 	}
 
-	rows, err := s.db.Query(`SELECT project, type FROM registries WHERE deleted = 0`)
+	rows, err := s.db.Query(`SELECT project, type, deleted FROM registries`)
 	if err != nil {
 		return nil, err
 	}
@@ -182,16 +178,27 @@ func (s *SQLiteRepository) Stats() (*Stats, error) {
 
 	for rows.Next() {
 		var project, typ string
-		if err := rows.Scan(&project, &typ); err != nil {
+		var deleted int
+		if err := rows.Scan(&project, &typ, &deleted); err != nil {
 			return nil, err
 		}
 		key := project
 		if key == "" {
 			key = "(global)"
 		}
-		st.ByProject[key]++
-		st.ByType[typ]++
-		st.Total++
+		pc := st.ByProject[key]
+		tc := st.ByType[typ]
+		if deleted != 0 {
+			pc.Deleted++
+			tc.Deleted++
+			st.TotalDeleted++
+		} else {
+			pc.Active++
+			tc.Active++
+			st.TotalActive++
+		}
+		st.ByProject[key] = pc
+		st.ByType[typ] = tc
 	}
 	return st, nil
 }
@@ -226,7 +233,7 @@ func (s *SQLiteRepository) List(q ListQuery) ([]RegistryItem, error) {
 	}
 
 	sql := fmt.Sprintf(
-		`SELECT r.id, r.type, r.title, %s, length(r.content), r.project, r.search_hits, r.get_hits, r.update_hits, r.date, r.deleted, r.deleted_date
+		`SELECT r.id, r.type, r.title, %s, length(r.content), r.project, r.date, r.deleted, r.deleted_date
 		 FROM registries r
 		 WHERE %s
 		 ORDER BY r.date DESC
@@ -273,7 +280,7 @@ func scanRegistry(s scanner) (*Registry, error) {
 	var delDate sql.NullInt64
 
 	err := s.Scan(&r.ID, &r.Type, &r.Title, &r.Content, &r.ContentFlat, &r.Project,
-		&r.SearchHits, &r.GetHits, &r.UpdateHits, &date, &deleted, &delDate)
+		&date, &deleted, &delDate)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +308,7 @@ func (s *SQLiteRepository) GetByIDs(ids []string) ([]RegistryItem, error) {
 	contentCol := fmt.Sprintf("substr(r.content, 1, %d)", s.snippetLength)
 
 	query := fmt.Sprintf(
-		`SELECT r.id, r.type, r.title, %s, length(r.content), r.project, r.search_hits, r.get_hits, r.update_hits, r.date, r.deleted, r.deleted_date
+		`SELECT r.id, r.type, r.title, %s, length(r.content), r.project, r.date, r.deleted, r.deleted_date
 		 FROM registries r
 		 WHERE r.id IN (%s) AND r.deleted = 0`,
 		contentCol, strings.Join(placeholders, ","),
@@ -325,7 +332,7 @@ func scanItems(rows *sql.Rows) ([]RegistryItem, error) {
 		var delDate sql.NullInt64
 
 		err := rows.Scan(&item.ID, &item.Type, &item.Title, &item.Content, &item.ContentLength,
-			&item.Project, &item.SearchHits, &item.GetHits, &item.UpdateHits, &date, &deleted, &delDate)
+			&item.Project, &date, &deleted, &delDate)
 		if err != nil {
 			return nil, err
 		}

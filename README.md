@@ -16,7 +16,7 @@ El usuario define:
 
 El agente guarda registros (JSON que cumple el schema del tipo) y los consulta con SQL cuando los necesita.
 
-Todo lo que guardes puede ser **global** (visible en cualquier proyecto) o **del proyecto actual** (scopeado al directorio de trabajo).
+Todo lo que guardes puede ser **global** (visible en cualquier proyecto) o **del proyecto actual** (scopeado al proyecto detectado por Acho).
 
 ## Instalación
 
@@ -35,6 +35,10 @@ Eso instala el plugin que arranca Acho como servidor MCP, un hook que carga las 
 
 Acho viene **desactivado por defecto** en cada proyecto. Hasta que lo actives explícitamente, el servidor MCP arranca sin exponer ninguna tool en ese proyecto (para no contaminar con memoria ajena un repo donde aún no quieres usarlo).
 
+La detección del proyecto funciona así:
+1. Si existe `git remote origin`, usa el nombre del repo remoto.
+2. Si no, usa la ruta completa del directorio actual, normalizada a slug.
+
 ```
 acho project enable          # activa Acho en el proyecto actual
 acho project disable         # lo desactiva de nuevo
@@ -45,7 +49,7 @@ Tras `enable` o `disable`, reconecta el MCP en tu agente para que aplique el cam
 
 ## Cómo funciona
 
-Acho gestiona tres conceptos: **reglas**, **tipos** y **registros**. Los tres pueden ser globales (visibles en todos tus proyectos) o del proyecto actual (scopeados al directorio de trabajo).
+Acho gestiona tres conceptos: **reglas**, **tipos** y **registros**. Los tres pueden ser globales (visibles en todos tus proyectos) o del proyecto actual (scopeados al proyecto detectado por Acho).
 
 ### Reglas
 

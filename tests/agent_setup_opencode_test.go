@@ -49,7 +49,6 @@ func TestAgentSetupOpenCodeInstallsPluginAndConfig(t *testing.T) {
 	for _, want := range []string{
 		`event.type === "session.created"`,
 		`event.type === "session.idle"`,
-		`event.type === "todo.updated"`,
 		`acho project status`,
 		`acho internal context`,
 		`acho internal remember`,

@@ -103,8 +103,7 @@ func createProjectViews(db *sql.DB, project string) error {
 		`DROP VIEW IF EXISTS temp.v_types`,
 		`DROP VIEW IF EXISTS temp.v_rules`,
 		fmt.Sprintf(`CREATE TEMP VIEW v_registries AS
-			SELECT rowid, id, type, title, content, content_flat, project,
-			       search_hits, get_hits, update_hits, date
+			SELECT rowid, id, type, title, content, content_flat, project, date
 			FROM registries
 			WHERE deleted = 0 AND (project = '%s' OR project = '')`, p),
 		fmt.Sprintf(`CREATE TEMP VIEW v_types AS

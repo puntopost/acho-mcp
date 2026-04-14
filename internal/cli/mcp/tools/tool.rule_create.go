@@ -28,8 +28,9 @@ type RuleCreateInput struct {
 }
 
 type RuleCreateOutput struct {
-	ID      string `json:"id"`
-	Message string `json:"message"`
+	ID        string `json:"id"`
+	Message   string `json:"message"`
+	Mandatory string `json:"mandatory"`
 }
 
 func (t *ruleCreate) Register(server *mcp.Server, deps Deps) {
@@ -49,6 +50,10 @@ func (t *ruleCreate) Register(server *mcp.Server, deps Deps) {
 			return nil, RuleCreateOutput{}, fmt.Errorf("rule_create failed: %w", err)
 		}
 		logToolSuccess("rule_create", start, "id", id)
-		return nil, RuleCreateOutput{ID: id, Message: fmt.Sprintf("Created rule %s", id)}, nil
+		return nil, RuleCreateOutput{
+			ID:        id,
+			Message:   fmt.Sprintf("Created rule %s", id),
+			Mandatory: fmt.Sprintf("==MANDATORY==\nFollow this newly created rule immediately in the current session:\n- %s (id: %s)\n%s\n==END==", input.Title, id, input.Text),
+		}, nil
 	})
 }

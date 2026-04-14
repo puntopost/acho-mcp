@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,10 +84,15 @@ func run(args ...string) (string, string, int) {
 }
 
 func (e *testEnv) run(args ...string) (string, string, int) {
+	return e.runWithInput("", args...)
+}
+
+func (e *testEnv) runWithInput(input string, args ...string) (string, string, int) {
 	path, _ := filepath.Abs(binary)
 	cmd := exec.Command(path, args...)
 	cmd.Env = append(os.Environ(), "ACHO_PATH="+e.dir)
 	cmd.Dir = e.workdir
+	cmd.Stdin = strings.NewReader(input)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -160,6 +166,33 @@ func (e *testEnv) runMCPInput(input string) (string, string, int) {
 	}
 
 	return result, stderr.String(), code
+}
+
+func writeJSONFile(t *testing.T, path string, v interface{}) {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal json: %v", err)
+	}
+	if err := os.WriteFile(path, b, 0644); err != nil {
+		t.Fatalf("write json file: %v", err)
+	}
+}
+
+func writeFile(t *testing.T, path string, data string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+}
+
+func readAll(t *testing.T, r io.Reader) string {
+	t.Helper()
+	b, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("read all: %v", err)
+	}
+	return string(b)
 }
 
 func (e *testEnv) mustRun(t *testing.T, args ...string) string {

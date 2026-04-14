@@ -26,40 +26,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "acho internal remember claude",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "acho internal remember claude",
-            "timeout": 2,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "acho internal remember claude",
-            "timeout": 2
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

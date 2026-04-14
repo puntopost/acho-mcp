@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/puntopost/acho-mcp/internal/cli"
+	"github.com/puntopost/acho-mcp/internal/cli/config"
 	"github.com/puntopost/acho-mcp/internal/cli/term"
 	"github.com/puntopost/acho-mcp/internal/persistence/rtype"
 	"github.com/puntopost/acho-mcp/internal/persistence/rule"
@@ -31,7 +32,7 @@ Usage:
 
 Lists all projects that have registries. Select one to rename — all its
 rules, types and registries will be updated to use the current project
-name (detected from git remote or directory path).
+name (detected from git remote or full directory path).
 
 Useful when you moved a directory, added a git remote, or changed the
 project slug and old registries are orphaned under the previous name.
@@ -145,23 +146,49 @@ func (c *projectRename) Run(args []string) error {
 		return nil
 	}
 
-	nRules, err := d.Rules.RenameProject(oldProject, currentProject)
-	if err != nil {
-		return err
-	}
-	nTypes, err := d.Types.RenameProject(oldProject, currentProject)
-	if err != nil {
-		return err
-	}
-	nRegs, err := d.Service.RenameProject(oldProject, currentProject)
-	if err != nil {
+	var nRules, nTypes, nRegs int
+	configUpdated := false
+
+	if err := config.WithConfigLock(func() error {
+		var err error
+		nRules, err = d.Rules.RenameProject(oldProject, currentProject)
+		if err != nil {
+			return err
+		}
+		nTypes, err = d.Types.RenameProject(oldProject, currentProject)
+		if err != nil {
+			return err
+		}
+		nRegs, err = d.Service.RenameProject(oldProject, currentProject)
+		if err != nil {
+			return err
+		}
+
+		cfg, err := loadConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+		if cfg.IsProjectEnabled(oldProject) {
+			cfg.EnabledProjects, _ = removeProject(cfg.EnabledProjects, oldProject)
+			cfg.EnabledProjects, _ = addProject(cfg.EnabledProjects, currentProject)
+			if err := saveConfig(cfg); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
+			configUpdated = true
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 
-	fmt.Printf("%s Renamed %s%s%s → %s%s%s (%d rules, %d types, %d registries updated)\n",
+	configNote := ""
+	if configUpdated {
+		configNote = "; enabled project updated in config"
+	}
+	fmt.Printf("%s Renamed %s%s%s → %s%s%s (%d rules, %d types, %d registries updated%s)\n",
 		term.T.Success("Done!"),
 		term.T.Bold(), oldProject, term.T.Reset(),
 		term.T.Bold(), currentProject, term.T.Reset(),
-		nRules, nTypes, nRegs)
+		nRules, nTypes, nRegs, configNote)
 	return nil
 }

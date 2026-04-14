@@ -2,10 +2,13 @@ package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/puntopost/acho-mcp/internal/cli/term"
+	"github.com/puntopost/acho-mcp/internal/persistence"
 )
 
 func init() {
@@ -30,8 +33,8 @@ Arguments:
   file                   JSON file from acho export (default: acho-export.json)
 
 Imports in order: rules first, then types, then registries (registries need
-their type to exist so they come last). Items that already exist (same id /
-same type name) are skipped.
+their type to exist so they come last). Existing items (same id / same type
+name) are skipped. Any other error is reported and makes the command fail.
 
 The file must have been exported with the same acho version.
 
@@ -70,38 +73,108 @@ func (c *importCmd) Run(args []string) error {
 	}
 	defer d.Close()
 
-	rulesImported, rulesSkipped := 0, 0
+	rulesImported, rulesSkipped, rulesFailed := 0, 0, 0
+	var failures []string
 	for _, r := range export.Rules {
-		if err := d.Rules.Upsert(r.ID, r.Title, r.Text, r.Project, r.Date); err != nil {
+		exists, err := importRuleExists(d, r.ID)
+		if err != nil {
+			rulesFailed++
+			failures = append(failures, fmt.Sprintf("rule %s: check existing: %v", r.ID, err))
+			continue
+		}
+		if exists {
 			rulesSkipped++
+			continue
+		}
+		if err := d.Rules.Upsert(r.ID, r.Title, r.Text, r.Project, r.Date); err != nil {
+			rulesFailed++
+			failures = append(failures, fmt.Sprintf("rule %s: %v", r.ID, err))
 			continue
 		}
 		rulesImported++
 	}
 
-	typesImported, typesSkipped := 0, 0
+	typesImported, typesSkipped, typesFailed := 0, 0, 0
 	for _, t := range export.Types {
-		if err := d.Types.Create(t.Name, t.Schema, t.Project, t.Date); err != nil {
+		exists, err := importTypeExists(d, t.Name)
+		if err != nil {
+			typesFailed++
+			failures = append(failures, fmt.Sprintf("type %s: check existing: %v", t.Name, err))
+			continue
+		}
+		if exists {
 			typesSkipped++
+			continue
+		}
+		if err := d.Types.Create(t.Name, t.Schema, t.Project, t.Date); err != nil {
+			typesFailed++
+			failures = append(failures, fmt.Sprintf("type %s: %v", t.Name, err))
 			continue
 		}
 		typesImported++
 	}
 
-	regsImported, regsSkipped := 0, 0
+	regsImported, regsSkipped, regsFailed := 0, 0, 0
 	for _, r := range export.Registries {
-		if err := d.Service.SaveAs(r.ID, r.Title, r.Content, r.Type, r.Project, r.Date); err != nil {
+		exists, err := importRegistryExists(d, r.ID)
+		if err != nil {
+			regsFailed++
+			failures = append(failures, fmt.Sprintf("registry %s: check existing: %v", r.ID, err))
+			continue
+		}
+		if exists {
 			regsSkipped++
+			continue
+		}
+		if err := d.Service.SaveAs(r.ID, r.Title, r.Content, r.Type, r.Project, r.Date); err != nil {
+			regsFailed++
+			failures = append(failures, fmt.Sprintf("registry %s: %v", r.ID, err))
 			continue
 		}
 		regsImported++
 	}
 
-	fmt.Printf("%s rules: %d imported, %d skipped | types: %d / %d | registries: %d / %d (from %s)\n",
+	fmt.Printf("%s rules: %d imported, %d skipped, %d failed | types: %d imported, %d skipped, %d failed | registries: %d imported, %d skipped, %d failed (from %s)\n",
 		term.T.Success("Imported"),
-		rulesImported, rulesSkipped,
-		typesImported, typesSkipped,
-		regsImported, regsSkipped,
+		rulesImported, rulesSkipped, rulesFailed,
+		typesImported, typesSkipped, typesFailed,
+		regsImported, regsSkipped, regsFailed,
 		file)
+	if len(failures) > 0 {
+		return fmt.Errorf("import failed:\n%s", strings.Join(failures, "\n"))
+	}
 	return nil
+}
+
+func importRuleExists(d *deps, id string) (bool, error) {
+	_, err := d.Rules.GetAny(id)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, persistence.ErrNotFound) {
+		return false, nil
+	}
+	return false, err
+}
+
+func importTypeExists(d *deps, name string) (bool, error) {
+	_, err := d.Types.GetAny(name)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, persistence.ErrNotFound) {
+		return false, nil
+	}
+	return false, err
+}
+
+func importRegistryExists(d *deps, id string) (bool, error) {
+	_, err := d.Service.GetAny(id)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, persistence.ErrNotFound) {
+		return false, nil
+	}
+	return false, err
 }

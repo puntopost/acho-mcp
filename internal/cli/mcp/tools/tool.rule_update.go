@@ -28,7 +28,8 @@ type RuleUpdateInput struct {
 }
 
 type RuleUpdateOutput struct {
-	Message string `json:"message"`
+	Message   string `json:"message"`
+	Mandatory string `json:"mandatory"`
 }
 
 func (t *ruleUpdate) Register(server *mcp.Server, deps Deps) {
@@ -71,6 +72,14 @@ func (t *ruleUpdate) Register(server *mcp.Server, deps Deps) {
 			return nil, RuleUpdateOutput{}, fmt.Errorf("rule_update failed: %w", err)
 		}
 		logToolSuccess("rule_update", start, "id", input.ID)
-		return nil, RuleUpdateOutput{Message: fmt.Sprintf("Updated rule %s", input.ID)}, nil
+		return nil, RuleUpdateOutput{
+			Message: fmt.Sprintf("Updated rule %s", input.ID),
+			Mandatory: fmt.Sprintf(
+				"==MANDATORY==\nThis rule has been updated in the current session. Stop following the previous version of this rule and follow this new version instead:\n- %s (id: %s)\n%s\n==END==",
+				title,
+				input.ID,
+				text,
+			),
+		}, nil
 	})
 }

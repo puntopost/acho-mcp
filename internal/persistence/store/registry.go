@@ -14,9 +14,6 @@ type Registry struct {
 	Content     string     `json:"content"`
 	ContentFlat string     `json:"-"`
 	Project     string     `json:"project"` // empty string means global
-	SearchHits  int        `json:"search_hits"`
-	GetHits     int        `json:"get_hits"`
-	UpdateHits  int        `json:"update_hits"`
 	Date        time.Time  `json:"date"`
 	Deleted     bool       `json:"deleted"`
 	DeletedDate *time.Time `json:"deleted_date,omitempty"`
@@ -29,9 +26,6 @@ type RegistryItem struct {
 	Content       string
 	ContentLength int
 	Project       string
-	SearchHits    int
-	GetHits       int
-	UpdateHits    int
 	Date          time.Time
 	Deleted       bool
 	DeletedDate   *time.Time
@@ -73,7 +67,3 @@ func (r *Registry) SetContent(c, flat string) { r.Content = c; r.ContentFlat = f
 func (r *Registry) SetProject(project string) { r.Project = project }
 func (r *Registry) SetType(typ string)        { r.Type = typ }
 func (r *Registry) SetDate(t time.Time)       { r.Date = t }
-
-func (r *Registry) IncrementSearchHits() { r.SearchHits++ }
-func (r *Registry) IncrementGetHits()    { r.GetHits++ }
-func (r *Registry) IncrementUpdateHits() { r.UpdateHits++ }

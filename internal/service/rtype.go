@@ -94,10 +94,26 @@ func (s *RTypeService) Count() (int, error) {
 	return s.repo.Count()
 }
 
+func (s *RTypeService) Stats() (*rtype.Stats, error) {
+	st, err := s.repo.Stats()
+	if err != nil {
+		return nil, fmt.Errorf("type stats: %w", err)
+	}
+	return st, nil
+}
+
 func (s *RTypeService) RenameProject(oldProject, newProject string) (int, error) {
 	n, err := s.repo.RenameProject(oldProject, newProject)
 	if err != nil {
 		return 0, fmt.Errorf("rename project: %w", err)
+	}
+	return n, nil
+}
+
+func (s *RTypeService) Rename(oldName, newName string) (int, error) {
+	n, err := s.repo.Rename(oldName, newName)
+	if err != nil {
+		return 0, fmt.Errorf("rename type: %w", err)
 	}
 	return n, nil
 }

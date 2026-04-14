@@ -314,7 +314,7 @@ func TestInternalContext(t *testing.T) {
 	if !strings.Contains(stdout, "MANDATORY") {
 		t.Errorf("expected MANDATORY block, got %q", stdout)
 	}
-	for _, expected := range []string{"Rules:", "Types:", "project rule", "[global] note", `"type":"object"`} {
+	for _, expected := range []string{"## Rules", "## Registry types", "project rule", "[global] note", `"type":"object"`} {
 		if !strings.Contains(stdout, expected) {
 			t.Errorf("expected context to contain %q, got %q", expected, stdout)
 		}
@@ -457,6 +457,41 @@ func TestCLIImportMissingArgs(t *testing.T) {
 	}
 }
 
+func TestCLIImportFailsOnRealErrors(t *testing.T) {
+	env := freshEnv(t)
+	tmpFile := t.TempDir() + "/bad-import.json"
+	writeJSONFile(t, tmpFile, map[string]interface{}{
+		"version":     "0.45.0",
+		"exported_at": "2026-01-01T00:00:00Z",
+		"rules":       []interface{}{},
+		"types":       []interface{}{},
+		"registries": []map[string]interface{}{
+			{
+				"id":      "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+				"type":    "banana",
+				"title":   "broken import",
+				"content": `{"text":"hola"}`,
+				"project": "",
+				"date":    "2026-01-01T00:00:00Z",
+			},
+		},
+	})
+
+	stdout, stderr, code := env.run("import", tmpFile)
+	if code == 0 {
+		t.Fatal("expected error for invalid import item")
+	}
+	if !strings.Contains(stdout, "1 failed") {
+		t.Fatalf("expected failure summary in stdout, got %q", stdout)
+	}
+	if !strings.Contains(stderr, "import failed") {
+		t.Fatalf("expected import error in stderr, got %q", stderr)
+	}
+	if !strings.Contains(stderr, "banana") {
+		t.Fatalf("expected failing type in stderr, got %q", stderr)
+	}
+}
+
 // === Project ===
 
 func TestCLIProject(t *testing.T) {
@@ -489,6 +524,50 @@ func TestCLIProjectRenameNoStdin(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "Cancelled") {
 		t.Errorf("expected 'Cancelled' output, got %q", stdout)
+	}
+}
+
+func TestCLIProjectRenameUpdatesEnabledProjects(t *testing.T) {
+	env := newTestEnv(t)
+	currentProject := env.projectName(t)
+	oldProject := "legacy-project"
+	env.mustRun(t, "project", "enable", "--project="+oldProject)
+
+	tmpFile := t.TempDir() + "/rename-import.json"
+	writeJSONFile(t, tmpFile, map[string]interface{}{
+		"version":     "0.45.0",
+		"exported_at": "2026-01-01T00:00:00Z",
+		"rules": []map[string]interface{}{
+			{"id": "01ARZ3NDEKTSV4RRFFQ69G5FAA", "title": "legacy rule", "text": "old", "project": oldProject, "date": "2026-01-01T00:00:00Z"},
+		},
+		"types": []map[string]interface{}{
+			{"name": "legacy_note", "schema": `{"type":"object"}`, "project": oldProject, "date": "2026-01-01T00:00:00Z"},
+		},
+		"registries": []map[string]interface{}{
+			{"id": "01ARZ3NDEKTSV4RRFFQ69G5FAB", "type": "legacy_note", "title": "legacy item", "content": `{"text":"old"}`, "project": oldProject, "date": "2026-01-01T00:00:00Z"},
+		},
+	})
+	env.mustRun(t, "import", tmpFile)
+
+	stdout, stderr, code := env.runWithInput(oldProject+"\n", "project", "rename")
+	if code != 0 {
+		t.Fatalf("expected rename success, exit %d stderr=%q", code, stderr)
+	}
+	if !strings.Contains(stdout, "enabled project updated in config") {
+		t.Fatalf("expected config update note, got %q", stdout)
+	}
+
+	stdout = env.mustRun(t, "project", "status")
+	if strings.TrimSpace(stdout) != "enabled" {
+		t.Fatalf("expected current project enabled after rename, got %q", stdout)
+	}
+
+	configOut := env.mustRun(t, "config", "show")
+	if !strings.Contains(configOut, currentProject) {
+		t.Fatalf("expected config to contain current project %q, got %q", currentProject, configOut)
+	}
+	if strings.Contains(configOut, oldProject) {
+		t.Fatalf("did not expect config to keep old project %q, got %q", oldProject, configOut)
 	}
 }
 

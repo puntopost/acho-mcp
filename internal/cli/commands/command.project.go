@@ -17,7 +17,9 @@ var _ Command = (*project)(nil)
 
 type project struct{}
 
-func (c *project) Usage() string       { return "acho project [status|enable|disable] [--project=NAME]" }
+func (c *project) Usage() string {
+	return "acho project [status|enable|disable|rename] [--project=NAME]"
+}
 func (c *project) Description() string { return "Print or manage the detected project name" }
 func (c *project) Order() int          { return 50 }
 func (c *project) Help() string {
@@ -28,14 +30,19 @@ Usage:
   acho project status [--project=NAME]
   acho project enable [--project=NAME]
   acho project disable [--project=NAME]
+  acho project rename
 
-Without subcommands, prints the project name detected from git remote, git root,
-or current directory.
+Without subcommands, prints the project name detected from git remote origin.
+If no git remote is available, Acho falls back to the full current directory
+path, slugified.
 
 With status, prints whether Acho is enabled for that project.
 
 With enable/disable, updates config.enabled_projects. Acho MCP is disabled by
 default for every project until it is explicitly enabled.
+
+With rename, choose an existing stored project and rename its rules, types,
+registries and enabled-project config entry to the currently detected project.
 `
 }
 

@@ -83,3 +83,11 @@ func (s *RuleService) RenameProject(oldProject, newProject string) (int, error) 
 	}
 	return n, nil
 }
+
+func (s *RuleService) Stats() (*rule.Stats, error) {
+	st, err := s.repo.Stats()
+	if err != nil {
+		return nil, fmt.Errorf("rule stats: %w", err)
+	}
+	return st, nil
+}

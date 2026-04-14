@@ -147,6 +147,36 @@ func (s *SQLiteRepository) List(q ListQuery) ([]Rule, error) {
 	return out, nil
 }
 
+func (s *SQLiteRepository) Stats() (*Stats, error) {
+	st := &Stats{ByProject: make(map[string]persistence.Counts)}
+	rows, err := s.db.Query(`SELECT project, deleted FROM rules`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var project string
+		var deleted int
+		if err := rows.Scan(&project, &deleted); err != nil {
+			return nil, err
+		}
+		key := project
+		if key == "" {
+			key = "(global)"
+		}
+		c := st.ByProject[key]
+		if deleted != 0 {
+			c.Deleted++
+			st.TotalDeleted++
+		} else {
+			c.Active++
+			st.TotalActive++
+		}
+		st.ByProject[key] = c
+	}
+	return st, nil
+}
+
 func (s *SQLiteRepository) RenameProject(oldProject, newProject string) (int, error) {
 	result, err := s.db.Exec(`UPDATE rules SET project = ? WHERE project = ? AND deleted = 0`, newProject, oldProject)
 	if err != nil {

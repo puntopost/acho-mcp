@@ -30,7 +30,7 @@ type RegistryGetOutput struct {
 func (t *registryGet) Register(server *mcp.Server, deps Deps) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "registry_get",
-		Description: "Get the full content of a registry by ID. Increments get_hits.",
+		Description: "Get the full content of a registry by ID.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input RegistryGetInput) (*mcp.CallToolResult, RegistryGetOutput, error) {
 		start := logToolStart("registry_get", "id", input.ID)
 		r, err := deps.Service.Get(input.ID)

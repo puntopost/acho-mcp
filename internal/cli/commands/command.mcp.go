@@ -31,8 +31,7 @@ Usage:
 
 The project name is always auto-detected from:
   1. Git remote origin (repo name)
-  2. Git root directory name
-  3. Current working directory name
+  2. Full current directory path
 Always normalized to lowercase slug (a-z, 0-9, hyphens).
 
 Starts acho as an MCP server communicating via stdin/stdout (NDJSON).

@@ -206,6 +206,36 @@ func (s *SQLiteRepository) List(q ListQuery) ([]RType, error) {
 	return out, nil
 }
 
+func (s *SQLiteRepository) Stats() (*Stats, error) {
+	st := &Stats{ByProject: make(map[string]persistence.Counts)}
+	rows, err := s.db.Query(`SELECT project, deleted FROM registry_types`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var project string
+		var deleted int
+		if err := rows.Scan(&project, &deleted); err != nil {
+			return nil, err
+		}
+		key := project
+		if key == "" {
+			key = "(global)"
+		}
+		c := st.ByProject[key]
+		if deleted != 0 {
+			c.Deleted++
+			st.TotalDeleted++
+		} else {
+			c.Active++
+			st.TotalActive++
+		}
+		st.ByProject[key] = c
+	}
+	return st, nil
+}
+
 func (s *SQLiteRepository) Count() (int, error) {
 	var n int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM registry_types WHERE deleted = 0`).Scan(&n)
@@ -216,6 +246,55 @@ func (s *SQLiteRepository) CountRegistriesFor(name string) (int, error) {
 	var n int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM registries WHERE type = ? AND deleted = 0`, name).Scan(&n)
 	return n, err
+}
+
+func (s *SQLiteRepository) Rename(oldName, newName string) (int, error) {
+	if !nameRe.MatchString(newName) {
+		return 0, fmt.Errorf("invalid new name %q (must match ^[a-z][a-z_]*$): %w", newName, persistence.ErrValidation)
+	}
+	if oldName == newName {
+		return 0, fmt.Errorf("new name equals old name: %w", persistence.ErrValidation)
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var srcDeleted int
+	if err := tx.QueryRow(`SELECT deleted FROM registry_types WHERE name = ?`, oldName).Scan(&srcDeleted); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("type %s: %w", oldName, persistence.ErrNotFound)
+		}
+		return 0, fmt.Errorf("rename type %s: %w", oldName, err)
+	}
+	if srcDeleted != 0 {
+		return 0, fmt.Errorf("type %s is deleted: %w", oldName, persistence.ErrValidation)
+	}
+
+	var destExists int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM registry_types WHERE name = ?`, newName).Scan(&destExists); err != nil {
+		return 0, fmt.Errorf("rename type %s: %w", oldName, err)
+	}
+	if destExists != 0 {
+		return 0, fmt.Errorf("type %s already exists (purge it first if soft-deleted): %w", newName, persistence.ErrValidation)
+	}
+
+	if _, err := tx.Exec(`UPDATE registry_types SET name = ? WHERE name = ?`, newName, oldName); err != nil {
+		return 0, fmt.Errorf("rename type %s: %w", oldName, err)
+	}
+
+	res, err := tx.Exec(`UPDATE registries SET type = ? WHERE type = ?`, newName, oldName)
+	if err != nil {
+		return 0, fmt.Errorf("rename type %s (registries): %w", oldName, err)
+	}
+	n, _ := res.RowsAffected()
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return int(n), nil
 }
 
 func (s *SQLiteRepository) RenameProject(oldProject, newProject string) (int, error) {

@@ -74,6 +74,49 @@ func TestMCPDisabledProjectStartsEmpty(t *testing.T) {
 	}
 }
 
+func TestRuleCreateReturnsMandatoryBlock(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "rule_create", `{"title":"fresh rule","text":"obey this now","project":"global"}`)
+	if !mcpContains(result, "==MANDATORY==") {
+		t.Fatalf("expected mandatory block, got %q", result)
+	}
+	if !mcpContains(result, "fresh rule") || !mcpContains(result, "obey this now") {
+		t.Fatalf("expected created rule contents in response, got %q", result)
+	}
+	if !mcpContains(result, "==END==") {
+		t.Fatalf("expected mandatory end marker, got %q", result)
+	}
+}
+
+func TestRuleUpdateReturnsReplacementMandatoryBlock(t *testing.T) {
+	env := freshEnv(t)
+	created := env.mustMCP(t, "rule_create", `{"title":"mutable rule","text":"do the old thing","project":"global"}`)
+	idx := strings.Index(created, `"id":"`)
+	if idx == -1 {
+		t.Fatalf("expected id in create response, got %q", created)
+	}
+	rest := created[idx+6:]
+	end := strings.Index(rest, `"`)
+	if end == -1 {
+		t.Fatalf("expected closing quote for id, got %q", created)
+	}
+	id := rest[:end]
+
+	result := env.mustMCP(t, "rule_update", fmt.Sprintf(`{"id":"%s","text":"do the new thing"}`, id))
+	if !mcpContains(result, "==MANDATORY==") {
+		t.Fatalf("expected mandatory block, got %q", result)
+	}
+	if !mcpContains(result, "Stop following the previous version of this rule") {
+		t.Fatalf("expected replacement instruction, got %q", result)
+	}
+	if !mcpContains(result, "mutable rule") || !mcpContains(result, "do the new thing") {
+		t.Fatalf("expected updated rule contents in response, got %q", result)
+	}
+	if !mcpContains(result, "==END==") {
+		t.Fatalf("expected mandatory end marker, got %q", result)
+	}
+}
+
 // === MCP Validation ===
 
 func TestMCPSaveUnknownType(t *testing.T) {
@@ -163,6 +206,51 @@ func TestTypeDeleteWithRegistriesRequiresForce(t *testing.T) {
 	env.mustMCP(t, "type_delete", `{"name":"note","force":true}`)
 }
 
+func TestTypeRenameUpdatesRegistries(t *testing.T) {
+	env := freshEnv(t)
+	env.mustSave(t, "an item", "content", "--type=note")
+	env.mustSave(t, "another", "more content", "--type=note")
+
+	out := env.mustMCP(t, "type_rename", `{"old_name":"note","new_name":"memo"}`)
+	if !mcpContains(out, "2 registries updated") {
+		t.Errorf("expected 2 registries updated, got %q", out)
+	}
+
+	rows := env.mustMCP(t, "sql_query", `{"sql":"SELECT COUNT(*) AS n FROM v_registries WHERE type = 'memo'"}`)
+	if !mcpContains(rows, `"n":2`) {
+		t.Errorf("expected both registries to have type=memo, got %q", rows)
+	}
+	typesRows := env.mustMCP(t, "sql_query", `{"sql":"SELECT name FROM v_types WHERE name IN ('note','memo')"}`)
+	if mcpContains(typesRows, `"name":"note"`) || !mcpContains(typesRows, `"name":"memo"`) {
+		t.Errorf("expected type renamed, got %q", typesRows)
+	}
+}
+
+func TestTypeRenameCollisionFails(t *testing.T) {
+	env := freshEnv(t)
+	// `note` and `plan` are both seeded — renaming onto an existing name must fail.
+	result := env.runMCP("type_rename", `{"old_name":"note","new_name":"plan"}`)
+	if !mcpContains(result, "already exists") {
+		t.Errorf("expected collision error, got %q", result)
+	}
+}
+
+func TestTypeRenameUnknownFails(t *testing.T) {
+	env := freshEnv(t)
+	result := env.runMCP("type_rename", `{"old_name":"ghost","new_name":"phantom"}`)
+	if !mcpContains(result, "not found") && !mcpContains(result, "ghost") {
+		t.Errorf("expected not-found error, got %q", result)
+	}
+}
+
+func TestTypeRenameInvalidName(t *testing.T) {
+	env := freshEnv(t)
+	result := env.runMCP("type_rename", `{"old_name":"note","new_name":"Bad-Name"}`)
+	if !mcpContains(result, "invalid") {
+		t.Errorf("expected invalid name error, got %q", result)
+	}
+}
+
 // === sql_query ===
 
 func TestSQLQueryOnViewReturnsRows(t *testing.T) {
@@ -216,5 +304,21 @@ func TestSQLQueryFTSWithRowidJoin(t *testing.T) {
 	}
 	if mcpContains(result, "unrelated") {
 		t.Errorf("unrelated should not match, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsPragmaTableInfoWithRawTableLiteral(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"SELECT name FROM pragma_table_info('registry_types') ORDER BY name"}`)
+	if !mcpContains(result, "schema") || !mcpContains(result, "project") {
+		t.Fatalf("expected pragma_table_info result, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsSqliteMasterLiteral(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"SELECT name FROM sqlite_master WHERE name = 'rules'"}`)
+	if !mcpContains(result, "rules") {
+		t.Fatalf("expected sqlite_master result, got %q", result)
 	}
 }

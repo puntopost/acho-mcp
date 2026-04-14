@@ -13,7 +13,7 @@ It stores **rules** (mandatory instructions loaded at the start of every session
 
 ### Tables
 
-- `registries(id, type, title, content, content_flat, project, search_hits, get_hits, update_hits, date)`
+- `registries(id, type, title, content, content_flat, project, date)`
   - `content` is a JSON object validated against the schema of its `type` (enforced by `CHECK(json_valid(content))` + service-level schema validation)
   - `content_flat` is a space-separated concatenation of the JSON leaf values; FTS5 indexes this, not `content`
 - `rules(id, title, text, project, date)` — free-text rules; injected to agents at session start wrapped in `==MANDATORY==...==END==`

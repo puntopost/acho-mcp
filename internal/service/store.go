@@ -84,7 +84,6 @@ func (s *StoreService) Update(id string, title, content, typ, project *string) e
 		return fmt.Errorf("update: %w", err)
 	}
 
-	r.IncrementUpdateHits()
 	r.SetDate(time.Now().UTC())
 
 	if err := s.repo.Save(*r); err != nil {
@@ -109,8 +108,6 @@ func (s *StoreService) Get(id string) (*store.Registry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get: %w", err)
 	}
-	r.IncrementGetHits()
-	s.repo.Save(*r)
 	return r, nil
 }
 

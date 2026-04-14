@@ -37,7 +37,7 @@ const sqlQueryDescription = `Run a read-only SQL query against the Acho database
 ALLOWED:
   - v_registries  project-filtered view of registries; includes rowid.
                   columns: rowid, id, type, title, content, content_flat,
-                           project, search_hits, get_hits, update_hits, date
+                           project, date
                   project='' means a global entry visible to every project.
                   content is a JSON object; query fields with json_extract(content, '$.field')
                   or the -> / ->> operators. date is a Unix timestamp (integer).
@@ -90,6 +90,7 @@ var (
 	reRawTables  = regexp.MustCompile(`(?i)\b(registries|rules|registry_types)\b`)
 	reWriteVerbs = regexp.MustCompile(`(?i)\b(insert|update|delete|drop|create|alter|replace|attach|detach|vacuum|reindex|truncate)\b`)
 	rePragmaStmt = regexp.MustCompile(`(?i)\bpragma\s+[a-z]`)
+	reReadStmt   = regexp.MustCompile(`(?i)^\s*(select|explain|with)\b`)
 )
 
 func (t *sqlQuery) Register(server *mcp.Server, deps Deps) {
@@ -133,16 +134,83 @@ func validateSQL(s string) error {
 	if trimmed == "" {
 		return fmt.Errorf("sql is required")
 	}
-	if reRawTables.MatchString(trimmed) {
+	normalized, err := normalizeSQLForValidation(trimmed)
+	if err != nil {
+		return err
+	}
+	if reRawTables.MatchString(normalized) {
 		return fmt.Errorf("access to raw tables (registries, rules, registry_types) is not allowed; use v_registries / v_types")
 	}
-	if reWriteVerbs.MatchString(trimmed) {
+	if reWriteVerbs.MatchString(normalized) {
 		return fmt.Errorf("write statements are not allowed")
 	}
-	if rePragmaStmt.MatchString(trimmed) {
+	if rePragmaStmt.MatchString(normalized) {
 		return fmt.Errorf("PRAGMA statements are not allowed; use pragma_table_info(name) as a table function instead")
 	}
+	if !reReadStmt.MatchString(normalized) {
+		return fmt.Errorf("only SELECT, EXPLAIN, or WITH ... SELECT statements are allowed")
+	}
 	return nil
+}
+
+func normalizeSQLForValidation(s string) (string, error) {
+	var out strings.Builder
+	state := byte(0)
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		next := byte(0)
+		if i+1 < len(s) {
+			next = s[i+1]
+		}
+
+		switch state {
+		case 0:
+			switch {
+			case ch == '\'' || ch == '"' || ch == '`':
+				state = ch
+				out.WriteByte(' ')
+			case ch == '[':
+				state = ']'
+				out.WriteByte(' ')
+			case ch == '-' && next == '-':
+				state = 'n'
+				out.WriteByte(' ')
+				i++
+			case ch == '/' && next == '*':
+				state = 'b'
+				out.WriteByte(' ')
+				i++
+			default:
+				out.WriteByte(ch)
+			}
+		case '\'', '"', '`':
+			if ch == state {
+				if next == state {
+					i++
+					continue
+				}
+				state = 0
+			}
+		case ']':
+			if ch == ']' {
+				state = 0
+			}
+		case 'n':
+			if ch == '\n' {
+				state = 0
+				out.WriteByte('\n')
+			}
+		case 'b':
+			if ch == '*' && next == '/' {
+				state = 0
+				i++
+			}
+		}
+	}
+	if state == '\'' || state == '"' || state == '`' || state == ']' || state == 'b' {
+		return "", fmt.Errorf("sql has an unterminated string or comment")
+	}
+	return out.String(), nil
 }
 
 func scanRows(rows *sql.Rows, limit int) ([]map[string]interface{}, bool, error) {
