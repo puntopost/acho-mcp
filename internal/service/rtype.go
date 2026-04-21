@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -13,11 +14,14 @@ import (
 )
 
 type RTypeService struct {
-	repo rtype.Repository
+	repo          rtype.Repository
+	compileSchema func(schema string) (*jsonschema.Schema, error)
+	cacheMu       sync.RWMutex
+	cache         map[string]*jsonschema.Schema
 }
 
 func NewRTypeService(r rtype.Repository) *RTypeService {
-	return &RTypeService{repo: r}
+	return &RTypeService{repo: r, compileSchema: compileSchema}
 }
 
 func (s *RTypeService) Create(name, schema, project string, at time.Time) error {
@@ -40,6 +44,11 @@ func (s *RTypeService) Create(name, schema, project string, at time.Time) error 
 }
 
 func (s *RTypeService) Delete(name string, force bool) (int, error) {
+	rt, err := s.repo.Get(name)
+	if err != nil {
+		return 0, fmt.Errorf("delete type: %w", err)
+	}
+
 	n, err := s.repo.CountRegistriesFor(name)
 	if err != nil {
 		return 0, fmt.Errorf("delete type: %w", err)
@@ -52,11 +61,13 @@ func (s *RTypeService) Delete(name string, force bool) (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("delete type: %w", err)
 		}
+		s.invalidateCompiledSchema(rt)
 		return removed, nil
 	}
 	if err := s.repo.Delete(name); err != nil {
 		return 0, fmt.Errorf("delete type: %w", err)
 	}
+	s.invalidateCompiledSchema(rt)
 	return 0, nil
 }
 
@@ -111,10 +122,17 @@ func (s *RTypeService) RenameProject(oldProject, newProject string) (int, error)
 }
 
 func (s *RTypeService) Rename(oldName, newName string) (int, error) {
+	rt, err := s.repo.Get(oldName)
+	if err != nil {
+		return 0, fmt.Errorf("rename type: %w", err)
+	}
+	rtBeforeRename := *rt
+
 	n, err := s.repo.Rename(oldName, newName)
 	if err != nil {
 		return 0, fmt.Errorf("rename type: %w", err)
 	}
+	s.invalidateCompiledSchema(&rtBeforeRename)
 	return n, nil
 }
 
@@ -123,7 +141,7 @@ func (s *RTypeService) ValidateContent(name, project, content string) error {
 	if err != nil {
 		return err
 	}
-	return validateAgainst(rt.Schema, content)
+	return s.validateAgainst(rt, content)
 }
 
 func compileSchema(schema string) (*jsonschema.Schema, error) {
@@ -134,8 +152,8 @@ func compileSchema(schema string) (*jsonschema.Schema, error) {
 	return compiler.Compile("schema.json")
 }
 
-func validateAgainst(schema, content string) error {
-	sch, err := compileSchema(schema)
+func (s *RTypeService) validateAgainst(rt *rtype.RType, content string) error {
+	sch, err := s.compiledSchema(rt)
 	if err != nil {
 		return fmt.Errorf("schema invalid: %w", err)
 	}
@@ -147,4 +165,46 @@ func validateAgainst(schema, content string) error {
 		return fmt.Errorf("content does not match schema: %w: %v", persistence.ErrValidation, err)
 	}
 	return nil
+}
+
+func (s *RTypeService) compiledSchema(rt *rtype.RType) (*jsonschema.Schema, error) {
+	key := compiledSchemaCacheKey(rt)
+
+	s.cacheMu.RLock()
+	if sch, ok := s.cache[key]; ok {
+		s.cacheMu.RUnlock()
+		return sch, nil
+	}
+	s.cacheMu.RUnlock()
+
+	sch, err := s.compileSchema(rt.Schema)
+	if err != nil {
+		return nil, err
+	}
+
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	if s.cache == nil {
+		s.cache = make(map[string]*jsonschema.Schema)
+	}
+	if existing, ok := s.cache[key]; ok {
+		return existing, nil
+	}
+	s.cache[key] = sch
+	return sch, nil
+}
+
+func (s *RTypeService) invalidateCompiledSchema(rt *rtype.RType) {
+	if rt == nil {
+		return
+	}
+
+	key := compiledSchemaCacheKey(rt)
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	delete(s.cache, key)
+}
+
+func compiledSchemaCacheKey(rt *rtype.RType) string {
+	return rt.Name + "\x00" + rt.Project + "\x00" + rt.Schema
 }
