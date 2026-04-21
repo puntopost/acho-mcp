@@ -115,7 +115,7 @@ func TestHelpListsAllCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "registries restore", "stats", "export", "import", "project", "rules list", "rules delete", "rules restore", "types list", "types delete", "types restore", "--version", "--help"} {
+	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "registries restore", "stats", "export", "import", "project", "rules list", "rules delete", "rules restore", "types list", "types get", "types delete", "types restore", "--version", "--help"} {
 		if !strings.Contains(stdout, cmd) {
 			t.Errorf("expected help to list %q", cmd)
 		}
@@ -402,6 +402,30 @@ func TestCLITypeRestoreRequiresForceForDeletedRegistries(t *testing.T) {
 	stdout = env.mustRun(t, "registries", "get", id)
 	if strings.Contains(stdout, "DELETED") {
 		t.Errorf("expected restored registry to be active, got %q", stdout)
+	}
+}
+
+func TestCLITypeListShowsDescription(t *testing.T) {
+	env := freshEnv(t)
+
+	stdout := env.mustRun(t, "types", "list", "--active", "--global")
+	if !strings.Contains(stdout, "description:") {
+		t.Fatalf("expected type list to show description, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "note helper type") {
+		t.Fatalf("expected seeded type description, got %q", stdout)
+	}
+}
+
+func TestCLITypeGetShowsDescription(t *testing.T) {
+	env := freshEnv(t)
+
+	stdout := env.mustRun(t, "types", "get", "note")
+	if !strings.Contains(stdout, "description: note helper type") {
+		t.Fatalf("expected type get to show description, got %q", stdout)
+	}
+	if !strings.Contains(stdout, `schema: {"type":"object"}`) {
+		t.Fatalf("expected type get to show schema, got %q", stdout)
 	}
 }
 

@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/puntopost/acho-mcp/internal/cli"
 	"github.com/puntopost/acho-mcp/internal/cli/term"
@@ -11,6 +14,8 @@ import (
 func init() {
 	Register(&typeList{})
 }
+
+var jsonKeyLineRe = regexp.MustCompile(`^(\s*)"([^"]+)":(.*)$`)
 
 var _ Command = (*typeList)(nil)
 
@@ -108,10 +113,58 @@ func printType(t rtype.RType) {
 		}
 		deletedTag = fmt.Sprintf(" %s[DELETED%s]%s", term.T.Danger(), d, term.T.Reset())
 	}
-	fmt.Printf("%s%s%s (%s%s%s)%s\n  %s\n  %sdate: %s%s\n\n",
+	fmt.Printf("%s%s%s (%s%s%s)%s\n  %sdescription:%s %s\n  %sschema:%s\n%s\n  %sdate: %s%s\n\n",
 		term.T.Bold(), t.Name, term.T.Reset(),
 		term.T.Primary(), label, term.T.Reset(), deletedTag,
-		t.Schema,
+		term.T.Muted(), term.T.Reset(), t.Description,
+		term.T.Muted(), term.T.Reset(), indentBlock(formatJSON(t.Schema), "    "),
 		term.T.Muted(), t.Date.Format(cli.DateYMD_HM), term.T.Reset(),
 	)
+}
+
+func formatJSON(raw string) string {
+	var out bytes.Buffer
+	if err := json.Indent(&out, []byte(raw), "", "  "); err != nil {
+		return raw
+	}
+	return colorizeJSONKeys(out.String())
+}
+
+func indentBlock(s, prefix string) string {
+	if s == "" {
+		return prefix
+	}
+	lines := bytes.Split([]byte(s), []byte("\n"))
+	out := make([]byte, 0, len(s)+len(lines)*len(prefix))
+	for i, line := range lines {
+		if i > 0 {
+			out = append(out, '\n')
+		}
+		out = append(out, prefix...)
+		out = append(out, line...)
+	}
+	return string(out)
+}
+
+func colorizeJSONKeys(s string) string {
+	lines := bytes.Split([]byte(s), []byte("\n"))
+	out := make([]byte, 0, len(s)+len(lines)*16)
+	for i, line := range lines {
+		if i > 0 {
+			out = append(out, '\n')
+		}
+		m := jsonKeyLineRe.FindSubmatch(line)
+		if m == nil {
+			out = append(out, line...)
+			continue
+		}
+		out = append(out, m[1]...)
+		out = append(out, term.T.Secondary()...)
+		out = append(out, '"')
+		out = append(out, m[2]...)
+		out = append(out, '"', ':')
+		out = append(out, term.T.Reset()...)
+		out = append(out, m[3]...)
+	}
+	return string(out)
 }
