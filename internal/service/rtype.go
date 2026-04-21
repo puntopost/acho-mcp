@@ -71,6 +71,35 @@ func (s *RTypeService) Delete(name string, force bool) (int, error) {
 	return 0, nil
 }
 
+func (s *RTypeService) Restore(name string, force bool) (int, error) {
+	rt, err := s.repo.GetAny(name)
+	if err != nil {
+		return 0, fmt.Errorf("restore type: %w", err)
+	}
+	if !rt.Deleted {
+		return 0, fmt.Errorf("restore type: type %s is already active: %w", name, persistence.ErrValidation)
+	}
+
+	n, err := s.repo.CountDeletedRegistriesFor(name)
+	if err != nil {
+		return 0, fmt.Errorf("restore type: %w", err)
+	}
+	if n > 0 && !force {
+		return 0, fmt.Errorf("restore type: %d deleted registries use %q, pass force=true to cascade restore: %w", n, name, persistence.ErrValidation)
+	}
+	if n > 0 {
+		restored, err := s.repo.RestoreCascade(name)
+		if err != nil {
+			return 0, fmt.Errorf("restore type: %w", err)
+		}
+		return restored, nil
+	}
+	if err := s.repo.Restore(name); err != nil {
+		return 0, fmt.Errorf("restore type: %w", err)
+	}
+	return 0, nil
+}
+
 func (s *RTypeService) List(project string, global bool, q rtype.ListQuery) ([]rtype.RType, error) {
 	q.Project = project
 	q.Global = global

@@ -144,6 +144,21 @@ func (s *SQLiteRepository) Delete(r Registry) error {
 	return nil
 }
 
+func (s *SQLiteRepository) Restore(id string) error {
+	result, err := s.db.Exec(
+		`UPDATE registries SET deleted = 0, deleted_date = NULL WHERE id = ? AND deleted = 1`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("restore registry %s: %w", id, err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return restoreRegistryStateError(s.db, id)
+	}
+	return nil
+}
+
 func (s *SQLiteRepository) ExportAll() ([]Registry, error) {
 	rows, err := s.db.Query(
 		`SELECT id, type, title, content, content_flat, project, date, deleted, deleted_date
@@ -350,4 +365,19 @@ func scanItems(rows *sql.Rows) ([]RegistryItem, error) {
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func restoreRegistryStateError(db *sql.DB, id string) error {
+	var deleted int
+	err := db.QueryRow(`SELECT deleted FROM registries WHERE id = ?`, id).Scan(&deleted)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("registry %s: %w", id, persistence.ErrNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("restore registry %s: %w", id, err)
+	}
+	if deleted == 0 {
+		return fmt.Errorf("registry %s is already active: %w", id, persistence.ErrValidation)
+	}
+	return fmt.Errorf("registry %s: restore failed", id)
 }

@@ -5,6 +5,7 @@ import "github.com/puntopost/acho-mcp/internal/persistence"
 type Repository interface {
 	Upsert(rule Rule) error
 	Delete(id string) error
+	Restore(id string) error
 	Get(id string) (*Rule, error)
 	GetAny(id string) (*Rule, error)
 	List(q ListQuery) ([]Rule, error)

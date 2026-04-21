@@ -12,6 +12,8 @@ type Repository interface {
 	Create(rt RType) error
 	Delete(name string) error
 	DeleteCascade(name string) (int, error)
+	Restore(name string) error
+	RestoreCascade(name string) (int, error)
 	Get(name string) (*RType, error)
 	GetAny(name string) (*RType, error)
 	Resolve(name, project string) (*RType, error)
@@ -19,6 +21,7 @@ type Repository interface {
 	Count() (int, error)
 	Stats() (*Stats, error)
 	CountRegistriesFor(name string) (int, error)
+	CountDeletedRegistriesFor(name string) (int, error)
 	RenameProject(oldProject, newProject string) (int, error)
 	Rename(oldName, newName string) (int, error)
 	PurgeDeleted() (int, error)

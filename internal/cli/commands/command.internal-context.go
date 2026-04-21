@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/puntopost/acho-mcp/internal/cli/agent"
@@ -106,8 +108,9 @@ func renderInternalContextMarkdown(rules []rule.Rule, types []rtype.RType) strin
 			if !rt.IsGlobal() {
 				label = "project:" + rt.Project
 			}
-			fmt.Fprintf(&b, "- [%s] %s\n%s\n\n", label, rt.Name, rt.Schema)
+			fmt.Fprintf(&b, "- [%s] %s - %s\n", label, rt.Name, summarizeSchema(rt.Schema))
 		}
+		b.WriteString("\nUse `sql_query` on `v_types` to read the full JSON Schema before creating or updating registries.\n\n")
 	}
 	b.WriteString("- Do not invent type schemas silently — always get approval before calling `type_create`.\n\n")
 
@@ -119,4 +122,60 @@ func renderInternalContextMarkdown(rules []rule.Rule, types []rtype.RType) strin
 	b.WriteString("- If `rule`, `registry`, `type`, or `project` are ambiguous, prefer the current repository meaning unless the user clearly refers to the Acho plugin.\n\n")
 	b.WriteString("==END==\n\n")
 	return b.String()
+}
+
+func summarizeSchema(schema string) string {
+	var doc map[string]interface{}
+	if err := json.Unmarshal([]byte(schema), &doc); err != nil {
+		return "full schema available via sql_query on v_types"
+	}
+
+	var parts []string
+	if typ, ok := doc["type"].(string); ok && typ != "" {
+		parts = append(parts, typ)
+	}
+
+	if fields := schemaPropertyNames(doc); len(fields) > 0 {
+		parts = append(parts, "fields: "+strings.Join(fields, ", "))
+	}
+
+	if required := schemaRequiredNames(doc); len(required) > 0 {
+		parts = append(parts, "required: "+strings.Join(required, ", "))
+	}
+
+	if len(parts) == 0 {
+		return "full schema available via sql_query on v_types"
+	}
+
+	return strings.Join(parts, "; ")
+}
+
+func schemaPropertyNames(doc map[string]interface{}) []string {
+	props, ok := doc["properties"].(map[string]interface{})
+	if !ok || len(props) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(props))
+	for name := range props {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func schemaRequiredNames(doc map[string]interface{}) []string {
+	requiredRaw, ok := doc["required"].([]interface{})
+	if !ok || len(requiredRaw) == 0 {
+		return nil
+	}
+
+	required := make([]string, 0, len(requiredRaw))
+	for _, item := range requiredRaw {
+		name, ok := item.(string)
+		if ok && name != "" {
+			required = append(required, name)
+		}
+	}
+	return required
 }

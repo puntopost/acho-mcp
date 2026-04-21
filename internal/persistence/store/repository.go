@@ -9,6 +9,7 @@ type Repository interface {
 	GetAny(id string) (*Registry, error)
 	GetByIDs(ids []string) ([]RegistryItem, error)
 	Delete(registry Registry) error
+	Restore(id string) error
 	ExportAll() ([]Registry, error)
 	Stats() (*Stats, error)
 	List(q ListQuery) ([]RegistryItem, error)

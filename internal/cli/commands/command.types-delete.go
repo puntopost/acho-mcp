@@ -17,15 +17,16 @@ type typeDelete struct{}
 func (c *typeDelete) Match(name string) bool { return name == "types delete" }
 func (c *typeDelete) Usage() string          { return "acho types delete <name> [--force]" }
 func (c *typeDelete) Description() string    { return "Delete a registry type" }
-func (c *typeDelete) Order() int             { return 41 }
+func (c *typeDelete) Order() int             { return 42 }
 func (c *typeDelete) Help() string {
-	return `acho types delete — Delete a registry type by name
+	return `acho types delete — Soft-delete a registry type by name
 
 Usage:
   acho types delete <name> [--force]
 
-Fails if any registry is using this type, unless --force is passed, which
-cascade-deletes every registry of that type along with the type itself.
+Fails if any active registry is using this type, unless --force is passed,
+which cascade-deletes every active registry of that type along with the type
+itself. Use acho types restore to bring it back.
 
 Examples:
   acho types delete bugfix

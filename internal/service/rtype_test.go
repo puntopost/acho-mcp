@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -31,6 +32,25 @@ func (s *rtypeRepoStub) DeleteCascade(name string) (int, error) {
 	s.registriesForType = 0
 	return removed, nil
 }
+func (s *rtypeRepoStub) Restore(name string) error {
+	if s.rt == nil || s.rt.Name != name {
+		return persistence.ErrNotFound
+	}
+	if !s.rt.Deleted {
+		return fmt.Errorf("type %s is already active: %w", name, persistence.ErrValidation)
+	}
+	s.rt.Deleted = false
+	s.rt.DeletedDate = nil
+	return nil
+}
+func (s *rtypeRepoStub) RestoreCascade(name string) (int, error) {
+	if err := s.Restore(name); err != nil {
+		return 0, err
+	}
+	restored := s.registriesForType
+	s.registriesForType = 0
+	return restored, nil
+}
 func (s *rtypeRepoStub) Get(name string) (*rtype.RType, error) {
 	if s.rt == nil || s.rt.Name != name {
 		return nil, persistence.ErrNotFound
@@ -47,6 +67,12 @@ func (s *rtypeRepoStub) List(q rtype.ListQuery) ([]rtype.RType, error) { return 
 func (s *rtypeRepoStub) Count() (int, error)                           { return 0, nil }
 func (s *rtypeRepoStub) Stats() (*rtype.Stats, error)                  { return nil, nil }
 func (s *rtypeRepoStub) CountRegistriesFor(name string) (int, error) {
+	if s.rt == nil || s.rt.Name != name {
+		return 0, persistence.ErrNotFound
+	}
+	return s.registriesForType, nil
+}
+func (s *rtypeRepoStub) CountDeletedRegistriesFor(name string) (int, error) {
 	if s.rt == nil || s.rt.Name != name {
 		return 0, persistence.ErrNotFound
 	}

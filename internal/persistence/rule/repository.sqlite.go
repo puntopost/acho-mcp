@@ -74,6 +74,21 @@ func (s *SQLiteRepository) Delete(id string) error {
 	return nil
 }
 
+func (s *SQLiteRepository) Restore(id string) error {
+	result, err := s.db.Exec(
+		`UPDATE rules SET deleted = 0, deleted_date = NULL WHERE id = ? AND deleted = 1`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("restore rule %s: %w", id, err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return restoreRuleStateError(s.db, id)
+	}
+	return nil
+}
+
 func (s *SQLiteRepository) Get(id string) (*Rule, error) {
 	return s.getOne(id, true)
 }
@@ -214,4 +229,19 @@ func (s *SQLiteRepository) PurgeDeleted() (int, error) {
 	}
 	n, _ := result.RowsAffected()
 	return int(n), nil
+}
+
+func restoreRuleStateError(db *sql.DB, id string) error {
+	var deleted int
+	err := db.QueryRow(`SELECT deleted FROM rules WHERE id = ?`, id).Scan(&deleted)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("rule %s: %w", id, persistence.ErrNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("restore rule %s: %w", id, err)
+	}
+	if deleted == 0 {
+		return fmt.Errorf("rule %s is already active: %w", id, persistence.ErrValidation)
+	}
+	return fmt.Errorf("rule %s: restore failed", id)
 }

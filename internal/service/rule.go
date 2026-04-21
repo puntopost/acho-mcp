@@ -39,6 +39,13 @@ func (s *RuleService) Delete(id string) error {
 	return nil
 }
 
+func (s *RuleService) Restore(id string) error {
+	if err := s.repo.Restore(id); err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	return nil
+}
+
 func (s *RuleService) Get(id string) (*rule.Rule, error) {
 	r, err := s.repo.Get(id)
 	if err != nil {

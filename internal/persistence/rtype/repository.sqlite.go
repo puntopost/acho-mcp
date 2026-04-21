@@ -85,6 +85,21 @@ func (s *SQLiteRepository) Delete(name string) error {
 	return nil
 }
 
+func (s *SQLiteRepository) Restore(name string) error {
+	result, err := s.db.Exec(
+		`UPDATE registry_types SET deleted = 0, deleted_date = NULL WHERE name = ? AND deleted = 1`,
+		name,
+	)
+	if err != nil {
+		return fmt.Errorf("restore type %s: %w", name, err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return restoreTypeStateError(s.db, name)
+	}
+	return nil
+}
+
 func (s *SQLiteRepository) DeleteCascade(name string) (int, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -119,6 +134,43 @@ func (s *SQLiteRepository) DeleteCascade(name string) (int, error) {
 		return 0, err
 	}
 	return int(removed), nil
+}
+
+func (s *SQLiteRepository) RestoreCascade(name string) (int, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(
+		`UPDATE registries SET deleted = 0, deleted_date = NULL WHERE type = ? AND deleted = 1`,
+		name,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("cascade restore registries: %w", err)
+	}
+	restored, _ := res.RowsAffected()
+
+	res2, err := tx.Exec(
+		`UPDATE registry_types SET deleted = 0, deleted_date = NULL WHERE name = ? AND deleted = 1`,
+		name,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("restore type %s: %w", name, err)
+	}
+	n, _ := res2.RowsAffected()
+	if n == 0 {
+		if err := restoreTypeStateError(tx, name); err != nil {
+			return 0, err
+		}
+		return 0, fmt.Errorf("type %s: restore failed", name)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return int(restored), nil
 }
 
 func (s *SQLiteRepository) Get(name string) (*RType, error) {
@@ -248,6 +300,12 @@ func (s *SQLiteRepository) CountRegistriesFor(name string) (int, error) {
 	return n, err
 }
 
+func (s *SQLiteRepository) CountDeletedRegistriesFor(name string) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM registries WHERE type = ? AND deleted = 1`, name).Scan(&n)
+	return n, err
+}
+
 func (s *SQLiteRepository) Rename(oldName, newName string) (int, error) {
 	if !nameRe.MatchString(newName) {
 		return 0, fmt.Errorf("invalid new name %q (must match ^[a-z][a-z_]*$): %w", newName, persistence.ErrValidation)
@@ -334,4 +392,23 @@ func (s *SQLiteRepository) PurgeDeleted() (int, error) {
 	}
 	n, _ := result.RowsAffected()
 	return int(n), nil
+}
+
+type deletedStateScanner interface {
+	QueryRow(query string, args ...interface{}) *sql.Row
+}
+
+func restoreTypeStateError(sc deletedStateScanner, name string) error {
+	var deleted int
+	err := sc.QueryRow(`SELECT deleted FROM registry_types WHERE name = ?`, name).Scan(&deleted)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("type %s: %w", name, persistence.ErrNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("restore type %s: %w", name, err)
+	}
+	if deleted == 0 {
+		return fmt.Errorf("type %s is already active: %w", name, persistence.ErrValidation)
+	}
+	return fmt.Errorf("type %s: restore failed", name)
 }

@@ -115,7 +115,7 @@ func TestHelpListsAllCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "stats", "export", "import", "project", "rules list", "rules delete", "types list", "types delete", "--version", "--help"} {
+	for _, cmd := range []string{"config", "mcp", "agent-setup", "registries list", "registries get", "registries delete", "registries restore", "stats", "export", "import", "project", "rules list", "rules delete", "rules restore", "types list", "types delete", "types restore", "--version", "--help"} {
 		if !strings.Contains(stdout, cmd) {
 			t.Errorf("expected help to list %q", cmd)
 		}
@@ -243,6 +243,22 @@ func TestCLIDelete(t *testing.T) {
 	}
 }
 
+func TestCLIRestoreRegistry(t *testing.T) {
+	env := freshEnv(t)
+	id := env.mustSave(t, "CLI to restore", "content", "--type=note")
+	env.mustRun(t, "registries", "delete", id)
+
+	stdout := env.mustRun(t, "registries", "restore", id)
+	if !strings.Contains(stdout, "Restored registry") {
+		t.Errorf("expected restore confirmation, got %q", stdout)
+	}
+
+	stdout = env.mustRun(t, "registries", "get", id)
+	if strings.Contains(stdout, "DELETED") {
+		t.Errorf("expected restored registry to be active, got %q", stdout)
+	}
+}
+
 func TestCLIList(t *testing.T) {
 	env := freshEnv(t)
 	stdout := env.mustRun(t, "registries", "list")
@@ -314,10 +330,78 @@ func TestInternalContext(t *testing.T) {
 	if !strings.Contains(stdout, "MANDATORY") {
 		t.Errorf("expected MANDATORY block, got %q", stdout)
 	}
-	for _, expected := range []string{"## Rules", "## Registry types", "project rule", "[global] note", `"type":"object"`} {
+	for _, expected := range []string{"## Rules", "## Registry types", "project rule", "[global] note - object", "decision - object; fields: chose; required: chose", "Use `sql_query` on `v_types` to read the full JSON Schema"} {
 		if !strings.Contains(stdout, expected) {
 			t.Errorf("expected context to contain %q, got %q", expected, stdout)
 		}
+	}
+	if strings.Contains(stdout, `"type":"object"`) {
+		t.Errorf("expected internal context to omit full schemas, got %q", stdout)
+	}
+}
+
+func TestCLIRestoreRule(t *testing.T) {
+	env := freshEnv(t)
+	created := env.mustMCP(t, "rule_create", `{"title":"restore me","text":"back again","project":"current"}`)
+	idx := strings.Index(created, `"id":"`)
+	if idx == -1 {
+		t.Fatalf("expected id in create response, got %q", created)
+	}
+	rest := created[idx+6:]
+	end := strings.Index(rest, `"`)
+	if end == -1 {
+		t.Fatalf("expected closing quote for id, got %q", created)
+	}
+	id := rest[:end]
+
+	env.mustRun(t, "rules", "delete", id)
+	stdout := env.mustRun(t, "rules", "restore", id)
+	if !strings.Contains(stdout, "Restored rule") {
+		t.Errorf("expected restore confirmation, got %q", stdout)
+	}
+
+	stdout = env.mustRun(t, "internal", "context", "opencode")
+	if !strings.Contains(stdout, "restore me") {
+		t.Errorf("expected restored rule in context, got %q", stdout)
+	}
+}
+
+func TestCLITypeRestore(t *testing.T) {
+	env := freshEnv(t)
+	env.mustRun(t, "types", "delete", "note")
+
+	stdout := env.mustRun(t, "types", "restore", "note")
+	if !strings.Contains(stdout, "Restored type") {
+		t.Errorf("expected restore confirmation, got %q", stdout)
+	}
+
+	stdout = env.mustRun(t, "types", "list")
+	if !strings.Contains(stdout, "note") {
+		t.Errorf("expected restored type in list, got %q", stdout)
+	}
+}
+
+func TestCLITypeRestoreRequiresForceForDeletedRegistries(t *testing.T) {
+	env := freshEnv(t)
+	id := env.mustSave(t, "type restore registry", "content", "--type=note")
+	env.mustRun(t, "types", "delete", "note", "--force")
+
+	_, stderr, code := env.run("types", "restore", "note")
+	if code == 0 {
+		t.Fatal("expected non-zero exit")
+	}
+	if !strings.Contains(stderr, "force") {
+		t.Errorf("expected force-required error, got %q", stderr)
+	}
+
+	stdout := env.mustRun(t, "types", "restore", "note", "--force")
+	if !strings.Contains(stdout, "and") {
+		t.Errorf("expected cascade restore confirmation, got %q", stdout)
+	}
+
+	stdout = env.mustRun(t, "registries", "get", id)
+	if strings.Contains(stdout, "DELETED") {
+		t.Errorf("expected restored registry to be active, got %q", stdout)
 	}
 }
 

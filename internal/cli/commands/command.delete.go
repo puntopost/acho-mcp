@@ -19,7 +19,7 @@ func (c *deleteCmd) Usage() string          { return "acho registries delete <id
 func (c *deleteCmd) Description() string    { return "Delete a registry" }
 func (c *deleteCmd) Order() int             { return 34 }
 func (c *deleteCmd) Help() string {
-	return `acho registries delete — Delete a registry
+	return `acho registries delete — Soft-delete a registry
 
 Usage:
   acho registries delete <id>
@@ -27,7 +27,8 @@ Usage:
 Arguments:
   id                     Registry ID to delete (required).
 
-Permanently removes the registry from the database. This cannot be undone.
+Marks the registry as deleted. Use acho registries restore to bring it back,
+or acho purge to remove soft-deleted entries permanently.
 
 Examples:
   acho registries delete 01K...

@@ -19,10 +19,13 @@ func (c *ruleDelete) Usage() string          { return "acho rules delete <id>" }
 func (c *ruleDelete) Description() string    { return "Delete a rule" }
 func (c *ruleDelete) Order() int             { return 40 }
 func (c *ruleDelete) Help() string {
-	return `acho rules delete — Delete a rule by id
+	return `acho rules delete — Soft-delete a rule by id
 
 Usage:
   acho rules delete <id>
+
+Marks the rule as deleted. Use acho rules restore to bring it back,
+or acho purge to remove soft-deleted entries permanently.
 
 Examples:
   acho rules delete 01K...

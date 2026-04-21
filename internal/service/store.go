@@ -103,6 +103,23 @@ func (s *StoreService) Delete(id string) error {
 	return nil
 }
 
+func (s *StoreService) Restore(id string) error {
+	r, err := s.repo.GetAny(id)
+	if err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	if !r.Deleted {
+		return fmt.Errorf("restore: registry %s is already active", id)
+	}
+	if err := s.types.ValidateContent(r.Type, r.Project, r.Content); err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	if err := s.repo.Restore(id); err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	return nil
+}
+
 func (s *StoreService) Get(id string) (*store.Registry, error) {
 	r, err := s.repo.Get(id)
 	if err != nil {
