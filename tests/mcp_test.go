@@ -287,6 +287,46 @@ func TestSQLQueryBlocksRawTables(t *testing.T) {
 	}
 }
 
+func TestSQLQueryAllowsAliasNamedLikeRawTable(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"SELECT COUNT(*) AS rules FROM v_rules"}`)
+	if !mcpContains(result, "rules") {
+		t.Fatalf("expected alias named like raw table to be allowed, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsRawTableNameInStringLiteral(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"SELECT 'registry_types' AS label FROM v_types"}`)
+	if !mcpContains(result, "registry_types") {
+		t.Fatalf("expected raw table name in string literal to be allowed, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsCTEName(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"WITH memo AS (SELECT name FROM v_types) SELECT name FROM memo"}`)
+	if !mcpContains(result, "note") {
+		t.Fatalf("expected cte query to be allowed, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsJSONEach(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"SELECT value FROM json_each('[1,2]') ORDER BY value"}`)
+	if !mcpContains(result, `"value":1`) || !mcpContains(result, `"value":2`) {
+		t.Fatalf("expected json_each result, got %q", result)
+	}
+}
+
+func TestSQLQueryAllowsExplainQueryPlan(t *testing.T) {
+	env := freshEnv(t)
+	result := env.mustMCP(t, "sql_query", `{"sql":"EXPLAIN QUERY PLAN SELECT name FROM v_types"}`)
+	if !mcpContains(result, "detail") {
+		t.Fatalf("expected explain query plan result, got %q", result)
+	}
+}
+
 func TestSQLQueryBlocksWrites(t *testing.T) {
 	env := freshEnv(t)
 	for _, q := range []string{

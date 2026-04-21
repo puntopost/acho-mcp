@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var _ Tool = (*sqlQuery)(nil)
@@ -86,11 +87,20 @@ Results are capped at 500 rows.`
 
 const maxRows = 500
 
+var rawSQLTables = map[string]struct{}{
+	"registries":     {},
+	"rules":          {},
+	"registry_types": {},
+}
+
 var (
-	reRawTables  = regexp.MustCompile(`(?i)\b(registries|rules|registry_types)\b`)
-	reWriteVerbs = regexp.MustCompile(`(?i)\b(insert|update|delete|drop|create|alter|replace|attach|detach|vacuum|reindex|truncate)\b`)
-	rePragmaStmt = regexp.MustCompile(`(?i)\bpragma\s+[a-z]`)
-	reReadStmt   = regexp.MustCompile(`(?i)^\s*(select|explain|with)\b`)
+	reFallbackWriteStart = regexp.MustCompile(`(?i)^\s*(insert|update|delete|drop|create|alter|replace|attach|detach|vacuum|reindex|truncate)\b`)
+	reFallbackPragmaStmt = regexp.MustCompile(`(?i)^\s*pragma\b`)
+	reFallbackRawSource  = regexp.MustCompile(`(?i)\b(from|join)\s+(registries|rules|registry_types)\b`)
+	reFallbackExplainQP  = regexp.MustCompile(`(?i)^\s*explain\s+query\s+plan\s+select\b`)
+	reFallbackPragmaTF   = regexp.MustCompile(`(?i)^\s*select\b.*\bpragma_table_info\s*\(`)
+	reFallbackJSONTable  = regexp.MustCompile(`(?i)^\s*select\b.*\b(json_each|json_tree)\s*\(`)
+	reFallbackFTSMatch   = regexp.MustCompile(`(?i)^\s*select\b.*\bmatch\b`)
 )
 
 func (t *sqlQuery) Register(server *mcp.Server, deps Deps) {
@@ -134,23 +144,109 @@ func validateSQL(s string) error {
 	if trimmed == "" {
 		return fmt.Errorf("sql is required")
 	}
-	normalized, err := normalizeSQLForValidation(trimmed)
+	err := validateSQLWithParser(trimmed)
+	if err == nil {
+		return nil
+	}
+
+	normalized, normErr := normalizeSQLForValidation(trimmed)
+	if normErr != nil {
+		return normErr
+	}
+	if reFallbackWriteStart.MatchString(normalized) {
+		return fmt.Errorf("write statements are not allowed")
+	}
+	if reFallbackPragmaStmt.MatchString(normalized) {
+		return fmt.Errorf("PRAGMA statements are not allowed; use pragma_table_info(name) as a table function instead")
+	}
+	if reFallbackRawSource.MatchString(normalized) {
+		return fmt.Errorf("access to raw tables (registries, rules, registry_types) is not allowed; use v_registries / v_types")
+	}
+	if allowsSQLiteReadFallback(normalized) {
+		return nil
+	}
+	return err
+}
+
+func validateSQLWithParser(sql string) error {
+	parser := sqlparser.NewTestParser()
+	stmt, err := parser.Parse(sql)
 	if err != nil {
 		return err
 	}
-	if reRawTables.MatchString(normalized) {
-		return fmt.Errorf("access to raw tables (registries, rules, registry_types) is not allowed; use v_registries / v_types")
+
+	if err := validateSQLStatement(stmt); err != nil {
+		return err
 	}
-	if reWriteVerbs.MatchString(normalized) {
-		return fmt.Errorf("write statements are not allowed")
+
+	cteNames := collectCTENames(stmt)
+	for _, table := range collectReferencedTables(stmt) {
+		name := strings.ToLower(table.Name.String())
+		if _, ok := cteNames[name]; ok {
+			continue
+		}
+		if _, forbidden := rawSQLTables[name]; forbidden {
+			return fmt.Errorf("access to raw tables (registries, rules, registry_types) is not allowed; use v_registries / v_types")
+		}
 	}
-	if rePragmaStmt.MatchString(normalized) {
-		return fmt.Errorf("PRAGMA statements are not allowed; use pragma_table_info(name) as a table function instead")
-	}
-	if !reReadStmt.MatchString(normalized) {
+
+	return nil
+}
+
+func validateSQLStatement(stmt sqlparser.Statement) error {
+	switch node := stmt.(type) {
+	case *sqlparser.Select, *sqlparser.Union:
+		return nil
+	case *sqlparser.ExplainStmt:
+		if node.Statement == nil {
+			return fmt.Errorf("EXPLAIN must wrap a statement")
+		}
+		return validateSQLStatement(node.Statement)
+	default:
 		return fmt.Errorf("only SELECT, EXPLAIN, or WITH ... SELECT statements are allowed")
 	}
-	return nil
+}
+
+func collectCTENames(stmt sqlparser.Statement) map[string]struct{} {
+	names := make(map[string]struct{})
+	_ = sqlparser.Walk(func(node sqlparser.SQLNode) (bool, error) {
+		cte, ok := node.(*sqlparser.CommonTableExpr)
+		if !ok {
+			return true, nil
+		}
+		names[strings.ToLower(cte.ID.String())] = struct{}{}
+		return true, nil
+	}, stmt)
+	return names
+}
+
+func collectReferencedTables(stmt sqlparser.Statement) []sqlparser.TableName {
+	seen := make(map[string]struct{})
+	out := make([]sqlparser.TableName, 0)
+	_ = sqlparser.Walk(func(node sqlparser.SQLNode) (bool, error) {
+		table, ok := node.(sqlparser.TableName)
+		if !ok {
+			return true, nil
+		}
+		if table.IsEmpty() {
+			return true, nil
+		}
+		name := strings.ToLower(table.Qualifier.String() + "." + table.Name.String())
+		if _, exists := seen[name]; exists {
+			return true, nil
+		}
+		seen[name] = struct{}{}
+		out = append(out, table)
+		return true, nil
+	}, stmt)
+	return out
+}
+
+func allowsSQLiteReadFallback(normalized string) bool {
+	return reFallbackExplainQP.MatchString(normalized) ||
+		reFallbackPragmaTF.MatchString(normalized) ||
+		reFallbackJSONTable.MatchString(normalized) ||
+		reFallbackFTSMatch.MatchString(normalized)
 }
 
 func normalizeSQLForValidation(s string) (string, error) {
