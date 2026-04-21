@@ -18,7 +18,7 @@ import (
 func main() {
 	term.Init(term.PuntoPostTheme{})
 	cli.InitLogger()
-	commands.Version = "0.45.0"
+	commands.Version = "0.5.0"
 
 	// Make embedded plugin files available to agent setup
 	agent.PluginFS = plugin.ClaudeFS

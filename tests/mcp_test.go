@@ -174,7 +174,7 @@ func TestMCPDelete(t *testing.T) {
 
 func TestTypeCreateAndUseViaMCP(t *testing.T) {
 	env := freshEnv(t)
-	env.mustMCP(t, "type_create", `{"name":"decision","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"global"}`)
+	env.mustMCP(t, "type_create", `{"name":"decision","description":"Project decision records","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"global"}`)
 
 	// valid content
 	env.mustMCP(t, "registry_create", `{"title":"pick db","content":"{\"chose\":\"sqlite\"}","type":"decision","project":"global"}`)
@@ -188,9 +188,18 @@ func TestTypeCreateAndUseViaMCP(t *testing.T) {
 
 func TestTypeCreateDuplicate(t *testing.T) {
 	env := freshEnv(t)
-	result := env.runMCP("type_create", `{"name":"rule","schema":"{}","project":"global"}`)
+	result := env.runMCP("type_create", `{"name":"rule","description":"duplicate test","schema":"{}","project":"global"}`)
 	if !mcpContains(result, "already exists") {
 		t.Errorf("expected duplicate error, got %q", result)
+	}
+}
+
+func TestTypeCreateDescriptionTooLong(t *testing.T) {
+	env := freshEnv(t)
+	description := strings.Repeat("a", 301)
+	result := env.runMCP("type_create", fmt.Sprintf(`{"name":"playbook","description":"%s","schema":"{}","project":"global"}`, description))
+	if !mcpContains(result, "description too long") {
+		t.Errorf("expected description length error, got %q", result)
 	}
 }
 

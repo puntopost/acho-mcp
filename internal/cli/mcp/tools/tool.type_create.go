@@ -21,9 +21,10 @@ func (t *typeCreate) Instruction() string {
 }
 
 type TypeCreateInput struct {
-	Name    string `json:"name" jsonschema:"Type name (slug ^[a-z][a-z_]*$, globally unique)"`
-	Schema  string `json:"schema" jsonschema:"JSON Schema (draft 2020-12) that content must match"`
-	Project string `json:"project" jsonschema:"\"current\" or \"global\""`
+	Name        string `json:"name" jsonschema:"Type name (slug ^[a-z][a-z_]*$, globally unique)"`
+	Description string `json:"description" jsonschema:"Short description (max 300 chars) explaining when to use this type"`
+	Schema      string `json:"schema" jsonschema:"JSON Schema (draft 2020-12) that content must match"`
+	Project     string `json:"project" jsonschema:"\"current\" or \"global\""`
 }
 
 type TypeCreateOutput struct {
@@ -40,9 +41,9 @@ func (t *typeCreate) Register(server *mcp.Server, deps Deps) {
 		if err != nil {
 			return nil, TypeCreateOutput{}, err
 		}
-		start := logToolStart("type_create", "name", input.Name, "project", project)
+		start := logToolStart("type_create", "name", input.Name, "project", project, "description_len", len(input.Description))
 
-		if err := deps.Types.Create(input.Name, input.Schema, project, time.Now().UTC()); err != nil {
+		if err := deps.Types.Create(input.Name, input.Description, input.Schema, project, time.Now().UTC()); err != nil {
 			logToolError("type_create", start, err, "name", input.Name)
 			return nil, TypeCreateOutput{}, fmt.Errorf("type_create failed: %w", err)
 		}

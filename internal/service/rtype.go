@@ -24,12 +24,13 @@ func NewRTypeService(r rtype.Repository) *RTypeService {
 	return &RTypeService{repo: r, compileSchema: compileSchema}
 }
 
-func (s *RTypeService) Create(name, schema, project string, at time.Time) error {
+func (s *RTypeService) Create(name, description, schema, project string, at time.Time) error {
 	rt := rtype.RType{
-		Name:    name,
-		Schema:  schema,
-		Project: project,
-		Date:    at,
+		Name:        name,
+		Description: description,
+		Schema:      schema,
+		Project:     project,
+		Date:        at,
 	}
 	if err := rt.Validate(); err != nil {
 		return fmt.Errorf("create type: %w", err)

@@ -42,7 +42,7 @@ ALLOWED:
                   content is a JSON object; query fields with json_extract(content, '$.field')
                   or the -> / ->> operators. date is a Unix timestamp (integer).
   - v_types       project-filtered view of registry types.
-                  columns: name, schema, project, date
+                  columns: name, description, schema, project, date
                   project='' means a global type.
   - v_rules       project-filtered view of rules (mandatory instructions).
                   columns: rowid, id, title, text, project, date
@@ -80,7 +80,7 @@ Examples:
   SELECT name, type FROM pragma_table_info('v_registries');
 
   -- List what types are defined and their schemas
-  SELECT name, project, schema FROM v_types ORDER BY name;
+  SELECT name, description, project, schema FROM v_types ORDER BY name;
 
 Results are capped at 500 rows.`
 

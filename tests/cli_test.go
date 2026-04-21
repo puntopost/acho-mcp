@@ -325,18 +325,18 @@ func TestInternalContext(t *testing.T) {
 	env := freshEnv(t)
 	env.mustRun(t, "project", "enable")
 	env.mustMCP(t, "rule_create", `{"title":"project rule","text":"only for this project","project":"current"}`)
-	env.mustMCP(t, "type_create", `{"name":"decision","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"current"}`)
+	env.mustMCP(t, "type_create", `{"name":"decision","description":"Project decision records","schema":"{\"type\":\"object\",\"required\":[\"chose\"],\"properties\":{\"chose\":{\"type\":\"string\"}}}","project":"current"}`)
 	stdout := env.mustRun(t, "internal", "context", "opencode")
 	if !strings.Contains(stdout, "MANDATORY") {
 		t.Errorf("expected MANDATORY block, got %q", stdout)
 	}
-	for _, expected := range []string{"## Rules", "## Registry types", "project rule", "[global] note - object", "decision - object; fields: chose; required: chose", "Use `sql_query` on `v_types` to read the full JSON Schema"} {
+	for _, expected := range []string{"## Rules", "## Registry types", "project rule", "[global] note - note helper type", "decision - Project decision records", "Use `sql_query` on `v_types` to read the full JSON Schema"} {
 		if !strings.Contains(stdout, expected) {
 			t.Errorf("expected context to contain %q, got %q", expected, stdout)
 		}
 	}
-	if strings.Contains(stdout, `"type":"object"`) {
-		t.Errorf("expected internal context to omit full schemas, got %q", stdout)
+	if strings.Contains(stdout, `fields: chose`) || strings.Contains(stdout, `required: chose`) {
+		t.Errorf("expected internal context to use descriptions instead of schema summaries, got %q", stdout)
 	}
 }
 
@@ -545,7 +545,7 @@ func TestCLIImportFailsOnRealErrors(t *testing.T) {
 	env := freshEnv(t)
 	tmpFile := t.TempDir() + "/bad-import.json"
 	writeJSONFile(t, tmpFile, map[string]interface{}{
-		"version":     "0.45.0",
+		"version":     "0.5.0",
 		"exported_at": "2026-01-01T00:00:00Z",
 		"rules":       []interface{}{},
 		"types":       []interface{}{},
@@ -619,13 +619,13 @@ func TestCLIProjectRenameUpdatesEnabledProjects(t *testing.T) {
 
 	tmpFile := t.TempDir() + "/rename-import.json"
 	writeJSONFile(t, tmpFile, map[string]interface{}{
-		"version":     "0.45.0",
+		"version":     "0.5.0",
 		"exported_at": "2026-01-01T00:00:00Z",
 		"rules": []map[string]interface{}{
 			{"id": "01ARZ3NDEKTSV4RRFFQ69G5FAA", "title": "legacy rule", "text": "old", "project": oldProject, "date": "2026-01-01T00:00:00Z"},
 		},
 		"types": []map[string]interface{}{
-			{"name": "legacy_note", "schema": `{"type":"object"}`, "project": oldProject, "date": "2026-01-01T00:00:00Z"},
+			{"name": "legacy_note", "description": "Legacy note type", "schema": `{"type":"object"}`, "project": oldProject, "date": "2026-01-01T00:00:00Z"},
 		},
 		"registries": []map[string]interface{}{
 			{"id": "01ARZ3NDEKTSV4RRFFQ69G5FAB", "type": "legacy_note", "title": "legacy item", "content": `{"text":"old"}`, "project": oldProject, "date": "2026-01-01T00:00:00Z"},

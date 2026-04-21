@@ -36,7 +36,7 @@ func freshEnv(t *testing.T) *testEnv {
 	e := newTestEnv(t)
 	e.mustRun(t, "project", "enable")
 	for _, typ := range []string{"rule", "bugfix", "note", "plan", "resource"} {
-		e.seedType(t, typ, `{"type":"object"}`)
+		e.seedType(t, typ, typ+" helper type", `{"type":"object"}`)
 	}
 	return e
 }
@@ -51,12 +51,13 @@ func newTestEnv(t *testing.T) *testEnv {
 	return &testEnv{dir: root, workdir: workdir}
 }
 
-func (e *testEnv) seedType(t *testing.T, name, schema string) {
+func (e *testEnv) seedType(t *testing.T, name, description, schema string) {
 	t.Helper()
 	payload, _ := json.Marshal(map[string]interface{}{
-		"name":    name,
-		"schema":  schema,
-		"project": "global",
+		"name":        name,
+		"description": description,
+		"schema":      schema,
+		"project":     "global",
 	})
 	result := e.runMCP("type_create", string(payload))
 	if result == "" {

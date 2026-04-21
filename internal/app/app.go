@@ -107,7 +107,7 @@ func createProjectViews(db *sql.DB, project string) error {
 			FROM registries
 			WHERE deleted = 0 AND (project = '%s' OR project = '')`, p),
 		fmt.Sprintf(`CREATE TEMP VIEW v_types AS
-			SELECT name, schema, project, date
+			SELECT name, description, schema, project, date
 			FROM registry_types
 			WHERE deleted = 0 AND (project = '%s' OR project = '')`, p),
 		fmt.Sprintf(`CREATE TEMP VIEW v_rules AS

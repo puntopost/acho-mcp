@@ -27,6 +27,7 @@ func (s *SQLiteRepository) migrate() error {
 	_, err := s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS registry_types (
 			name         TEXT PRIMARY KEY,
+			description  TEXT NOT NULL,
 			schema       TEXT NOT NULL,
 			project      TEXT NOT NULL,
 			date         INTEGER NOT NULL,
@@ -46,8 +47,8 @@ func (s *SQLiteRepository) Create(rt RType) error {
 	switch {
 	case err == sql.ErrNoRows:
 		if _, err := s.db.Exec(
-			`INSERT INTO registry_types (name, schema, project, date) VALUES (?, ?, ?, ?)`,
-			rt.Name, rt.Schema, rt.Project, rt.Date.Unix(),
+			`INSERT INTO registry_types (name, description, schema, project, date) VALUES (?, ?, ?, ?, ?)`,
+			rt.Name, rt.Description, rt.Schema, rt.Project, rt.Date.Unix(),
 		); err != nil {
 			return fmt.Errorf("create type %s: %w", rt.Name, err)
 		}
@@ -60,9 +61,9 @@ func (s *SQLiteRepository) Create(rt RType) error {
 		// deleted == 1: resurrect with the new definition.
 		if _, err := s.db.Exec(
 			`UPDATE registry_types
-			 SET schema = ?, project = ?, date = ?, deleted = 0, deleted_date = NULL
+			 SET description = ?, schema = ?, project = ?, date = ?, deleted = 0, deleted_date = NULL
 			 WHERE name = ?`,
-			rt.Schema, rt.Project, rt.Date.Unix(), rt.Name,
+			rt.Description, rt.Schema, rt.Project, rt.Date.Unix(), rt.Name,
 		); err != nil {
 			return fmt.Errorf("create type %s: %w", rt.Name, err)
 		}
@@ -182,7 +183,7 @@ func (s *SQLiteRepository) GetAny(name string) (*RType, error) {
 }
 
 func (s *SQLiteRepository) getOne(name string, activeOnly bool) (*RType, error) {
-	q := `SELECT name, schema, project, date, deleted, deleted_date FROM registry_types WHERE name = ?`
+	q := `SELECT name, description, schema, project, date, deleted, deleted_date FROM registry_types WHERE name = ?`
 	if activeOnly {
 		q += ` AND deleted = 0`
 	}
@@ -234,7 +235,7 @@ func (s *SQLiteRepository) List(q ListQuery) ([]RType, error) {
 	}
 
 	sql := fmt.Sprintf(
-		`SELECT name, schema, project, date, deleted, deleted_date
+		`SELECT name, description, schema, project, date, deleted, deleted_date
 		 FROM registry_types
 		 WHERE %s
 		 ORDER BY project = '' DESC, name ASC`,
@@ -373,7 +374,7 @@ func scan(sc scanner) (*RType, error) {
 	var date int64
 	var deleted int
 	var delDate sql.NullInt64
-	if err := sc.Scan(&rt.Name, &rt.Schema, &rt.Project, &date, &deleted, &delDate); err != nil {
+	if err := sc.Scan(&rt.Name, &rt.Description, &rt.Schema, &rt.Project, &date, &deleted, &delDate); err != nil {
 		return nil, err
 	}
 	rt.Date = time.Unix(date, 0).UTC()

@@ -68,7 +68,7 @@ func TestAgentSetupOpenCodeInstallsPluginAndConfig(t *testing.T) {
 		`"name": "acho-opencode-plugin"`,
 		`"private": true`,
 		`"type": "module"`,
-		`"version": "0.45.0"`,
+		`"version": "0.5.0"`,
 	} {
 		if !strings.Contains(manifest, want) {
 			t.Fatalf("expected package manifest to contain %q, got %s", want, manifest)

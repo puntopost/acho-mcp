@@ -106,7 +106,7 @@ func (c *importCmd) Run(args []string) error {
 			typesSkipped++
 			continue
 		}
-		if err := d.Types.Create(t.Name, t.Schema, t.Project, t.Date); err != nil {
+		if err := d.Types.Create(t.Name, t.Description, t.Schema, t.Project, t.Date); err != nil {
 			typesFailed++
 			failures = append(failures, fmt.Sprintf("type %s: %v", t.Name, err))
 			continue
